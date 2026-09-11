@@ -1,5 +1,9 @@
 *, *::before, *::after { box-sizing: border-box; }
 
+/* An author `display` beats the UA rule for [hidden], so make hidden mean hidden.
+   Without this, .setup { display: grid } re-shows the host-only controls. */
+[hidden] { display: none !important; }
+
 html, body { height: 100%; }
 
 body {
