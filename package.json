@@ -18,6 +18,8 @@
     "server:dev": "wrangler dev --config server/wrangler.jsonc --port 8787 --ip 127.0.0.1",
     "server:deploy": "wrangler deploy --config server/wrangler.jsonc",
     "server:tail": "wrangler tail --config server/wrangler.jsonc",
+    "deploy": "npm run build && wrangler deploy",
+    "deploy:all": "npm run server:deploy && npm run deploy",
     "smoke:relay": "node scripts/smoke-relay.mjs",
     "bot": "node scripts/bot-player.mjs",
     "set-relay": "node scripts/set-relay.mjs"
