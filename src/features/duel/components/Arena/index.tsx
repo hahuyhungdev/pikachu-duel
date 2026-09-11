@@ -19,6 +19,7 @@ export function Arena({ mode, players, onPick, onHint, onShuffle }: ArenaProps) 
       {player1 && (
         <Cabinet
           player={player1}
+          opponent={player2}
           mode={mode}
           onPick={(r, c) => onPick(0, r, c)}
           onHint={() => onHint(0)}
@@ -28,6 +29,7 @@ export function Arena({ mode, players, onPick, onHint, onShuffle }: ArenaProps) 
       {player2 ? (
         <Cabinet
           player={player2}
+          opponent={player1}
           mode={mode}
           hidden={isSolo}
           onPick={(r, c) => onPick(1, r, c)}

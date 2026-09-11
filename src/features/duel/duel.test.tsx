@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { DuelGame, PRESETS } from './index';
 import { calculateNextLevel, normalizeDifficulty } from '../../shared/game/presets.js';
@@ -96,5 +96,28 @@ describe('Pikachu Duel React feature', () => {
       difficulty: 'hard',
       clock: 60,
     });
+  });
+
+  it('renders progress percent and lead indicators in dual mode', () => {
+    const { container } = render(<DuelGame />);
+    fireEvent.click(screen.getByRole('button', { name: /start duel/i }));
+
+    const p1 = container.querySelector('[data-player="1"]')!;
+    const p2 = container.querySelector('[data-player="2"]')!;
+
+    expect(p1.querySelector('[data-role="progress-percent"]')).toHaveTextContent('0');
+    expect(p2.querySelector('[data-role="progress-percent"]')).toHaveTextContent('0');
+
+    // Trigger hint on P1 and clear pair
+    fireEvent.click(within(p1 as HTMLElement).getByRole('button', { name: /hint/i }));
+    const hintTiles = p1.querySelectorAll('.tile[data-hint="true"]');
+    expect(hintTiles).toHaveLength(2);
+    fireEvent.click(hintTiles[0]);
+    fireEvent.click(hintTiles[1]);
+
+    // P1 cleared 1 of 72 pairs (~1%), leads P2
+    expect(p1.querySelector('[data-role="progress-percent"]')).toHaveTextContent('1');
+    expect(p1.querySelector('[data-role="lead-indicator"]')).toHaveTextContent(/LEAD/i);
+    expect(p2.querySelector('[data-role="lead-indicator"]')).toHaveTextContent(/▼/);
   });
 });

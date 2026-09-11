@@ -331,8 +331,142 @@ kbd {
   font-variant-numeric: tabular-nums;
 }
 
+/* ---------- Dramatic Duel Progress & Lead Indicator ---------- */
+
+.duel-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.4rem 0.6rem;
+  background: var(--chrome-raised);
+  border: 1px solid var(--chrome-edge);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--bevel-up);
+  margin-block: 0.15rem 0.35rem;
+  transition: border-color var(--duration), box-shadow var(--duration);
+}
+
+.duel-progress--lead {
+  border-color: var(--gold-deep);
+}
+
+.duel-progress--tension {
+  border-color: var(--alarm);
+  animation: pulse-tension 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-tension {
+  0% {
+    box-shadow: var(--bevel-up), 0 0 4px oklch(55% 0.2 28 / 0.35);
+  }
+  100% {
+    box-shadow: var(--bevel-up), 0 0 12px oklch(55% 0.2 28 / 0.85);
+  }
+}
+
+.duel-progress__readout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-tight);
+}
+
+.duel-progress__metric {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+
+.duel-progress__label {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+}
+
+.duel-progress__value-wrap {
+  display: inline-flex;
+  align-items: baseline;
+  line-height: 1;
+}
+
+.duel-progress__value {
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 1.1rem + 0.7vw, 1.85rem);
+  font-weight: 900;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-shadow: 0 1px 0 var(--chrome-hi);
+}
+
+.duel-progress__symbol {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--accent);
+  opacity: 0.85;
+  margin-left: 1px;
+}
+
+.duel-progress__indicators {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.duel-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+}
+
+.duel-badge--lead {
+  background: var(--gold);
+  color: var(--desk-deep);
+  box-shadow: 0 1px 2px oklch(0% 0 0 / 0.2);
+}
+
+.duel-badge--trailing {
+  background: var(--chrome-lo);
+  color: var(--ink);
+  border: 1px solid var(--chrome-edge);
+}
+
+.duel-badge--tied {
+  background: var(--chrome-hi);
+  color: var(--ink-soft);
+  border: 1px solid var(--chrome-lo);
+}
+
+.duel-badge--critical {
+  background: var(--alarm);
+  color: #fff;
+  animation: pulse-critical 1s ease-in-out infinite alternate;
+}
+
+.duel-badge--alarm {
+  background: oklch(45% 0.18 28);
+  color: #fff;
+  border: 1px solid var(--alarm);
+  animation: pulse-critical 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-critical {
+  0% { transform: scale(1); opacity: 0.9; }
+  100% { transform: scale(1.05); opacity: 1; }
+}
+
 .meter {
-  height: 10px;
+  height: 6px;
   background: var(--chrome-lo);
   border: 1px solid var(--chrome-edge);
   border-radius: var(--radius-sm);

@@ -4,19 +4,42 @@ import { Board } from '../Board';
 interface CabinetProps {
   player: PlayerState;
   mode: DuelMode;
+  opponent?: PlayerState;
   hidden?: boolean;
   onPick: (r: number, c: number) => void;
   onHint: () => void;
   onShuffle: () => void;
 }
 
-export function Cabinet({ player, mode, hidden, onPick, onHint, onShuffle }: CabinetProps) {
+export function Cabinet({ player, opponent, mode, hidden, onPick, onHint, onShuffle }: CabinetProps) {
   const playerNum = (player.index + 1) as 1 | 2;
   const isFirst = player.index === 0;
   const isSolo = mode === 'solo';
 
   const badgeText = isSolo ? 'SOLO' : `P${playerNum}`;
-  const meterWidth = player.totalPairs > 0 ? (player.session.matchedPairs / player.totalPairs) * 100 : 0;
+  const playerPercent = player.totalPairs > 0
+    ? Math.round((player.session.matchedPairs / player.totalPairs) * 100)
+    : 0;
+
+  const opponentPercent = opponent && opponent.totalPairs > 0
+    ? Math.round((opponent.session.matchedPairs / opponent.totalPairs) * 100)
+    : 0;
+
+  const diff = playerPercent - opponentPercent;
+  const hasOpponent = !isSolo && Boolean(opponent);
+  const isLeading = hasOpponent && diff > 0;
+  const isTrailing = hasOpponent && diff < 0;
+  const isTied = hasOpponent && diff === 0 && (playerPercent > 0 || opponentPercent > 0);
+
+  const isPlayerCritical = playerPercent >= 80 && playerPercent < 100;
+  const isOpponentCritical = opponentPercent >= 80 && opponentPercent < 100;
+  const isTension = hasOpponent && (isPlayerCritical || isOpponentCritical);
+
+  const progressClasses = [
+    'duel-progress',
+    isTension ? 'duel-progress--tension' : '',
+    isLeading ? 'duel-progress--lead' : '',
+  ].filter(Boolean).join(' ');
 
   return (
     <section
@@ -50,8 +73,52 @@ export function Cabinet({ player, mode, hidden, onPick, onHint, onShuffle }: Cab
         </dl>
       </header>
 
-      <div className="meter">
-        <span className="meter__fill" data-role="meter" style={{ width: `${meterWidth}%` }} />
+      <div className={progressClasses} data-role="duel-progress">
+        <div className="duel-progress__readout">
+          <div className="duel-progress__metric">
+            <span className="duel-progress__label">Progress</span>
+            <div className="duel-progress__value-wrap">
+              <span className="duel-progress__value" data-role="progress-percent">
+                {playerPercent}
+              </span>
+              <span className="duel-progress__symbol">%</span>
+            </div>
+          </div>
+
+          {hasOpponent && (
+            <div className="duel-progress__indicators">
+              {isLeading && (
+                <span className="duel-badge duel-badge--lead" data-role="lead-indicator">
+                  ⚡ +{diff}% LEAD
+                </span>
+              )}
+              {isTrailing && (
+                <span className="duel-badge duel-badge--trailing" data-role="lead-indicator">
+                  ▼ {diff}%
+                </span>
+              )}
+              {isTied && (
+                <span className="duel-badge duel-badge--tied" data-role="lead-indicator">
+                  ⚔️ TIED
+                </span>
+              )}
+              {isPlayerCritical && (
+                <span className="duel-badge duel-badge--critical">
+                  🔥 MATCH POINT
+                </span>
+              )}
+              {!isPlayerCritical && isOpponentCritical && (
+                <span className="duel-badge duel-badge--alarm">
+                  🚨 OPPONENT AT {opponentPercent}%!
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="meter" aria-hidden="true">
+          <span className="meter__fill" data-role="meter" style={{ width: `${playerPercent}%` }} />
+        </div>
       </div>
 
       <div data-board-mount>
