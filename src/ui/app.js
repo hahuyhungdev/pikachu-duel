@@ -1,6 +1,10 @@
 /**
- * Wires two independent sessions built from one shared seed into a duel:
- * identical boards, side by side, first to clear wins.
+ * Duel orchestration, in two modes.
+ *
+ * Local: two sessions from one seed, side by side on this screen.
+ * Online: my session here, my opponent's progress mirrored from the relay. The
+ * relay is the authority on the seed and on who won; this file never decides a
+ * winner in online mode.
  */
 
 import { createSession, select, requestHint, requestShuffle, timeOut } from '../game/session.js';
@@ -8,6 +12,9 @@ import { randomSeed } from '../game/rng.js';
 import { MAX_ICONS } from '../game/icons.js';
 import { createBoardView, CLEAR_MS } from './boardView.js';
 import { sfx, setMuted, isMuted } from './audio.js';
+import { createRelay } from '../net/client.js';
+import { isRelayConfigured, isRoomCode, newRoomCode } from '../net/config.js';
+import { createLobbyView } from './lobby.js';
 
 export const PRESETS = {
   easy: { label: 'Easy', rows: 8, cols: 10, iconCount: 16, hints: 3, shuffles: 3 },
@@ -31,6 +38,15 @@ const KEYMAP = [
   },
 ];
 
+const RELAY_ERRORS = {
+  room_full: 'That room already has two players.',
+  not_host: 'Only the host can do that.',
+  need_two: 'Waiting for a second player.',
+  in_progress: 'The duel is already running.',
+  bad_code: 'That room code is not valid.',
+  too_fast: 'Disconnected for sending too much.',
+};
+
 const pad = (n) => String(n).padStart(2, '0');
 const clockText = (seconds) => `${pad(Math.floor(Math.max(0, seconds) / 60))}:${pad(Math.max(0, seconds) % 60)}`;
 
@@ -52,12 +68,28 @@ export function mountApp(root) {
     freshBoard: el('[data-action="fresh-board"]'),
     toast: el('[data-toast]'),
     cabinets: [...root.querySelectorAll('[data-cabinet]')],
+    modeButtons: [...root.querySelectorAll('[data-mode-btn]')],
+    onlineForm: el('[data-online-form]'),
+    onlineNote: el('[data-online-note]'),
+    linkState: el('[data-link-state]'),
+    lobby: el('[data-overlay="lobby"]'),
+    lobbyCode: el('[data-lobby-code]'),
+    lobbyStatus: el('[data-lobby-status]'),
+    lobbySeats: el('[data-lobby-seats]'),
+    lobbySettings: el('[data-lobby-settings]'),
+    lobbyDifficulty: el('[data-lobby-difficulty]'),
+    lobbyClock: el('[data-lobby-clock]'),
+    inviteLink: el('[data-invite-link]'),
+    copyInvite: el('[data-action="copy-invite"]'),
+    hostStart: el('[data-action="host-start"]'),
+    leaveRoom: el('[data-action="leave-room"]'),
   };
 
   let players = [];
   let timerId = null;
   let toastId = null;
   let duel = null;
+  let net = null;
 
   function saved() {
     try {
@@ -117,6 +149,13 @@ export function mountApp(root) {
     els.hint.disabled = session.hintsLeft <= 0 || session.status !== 'playing';
     els.shuffle.disabled = session.shufflesLeft <= 0 || session.status !== 'playing';
     els.meter.style.width = `${(session.matchedPairs / player.totalPairs) * 100}%`;
+    if (els.bigPairs) els.bigPairs.textContent = String(session.matchedPairs);
+    if (els.bigTotal) els.bigTotal.textContent = `of ${player.totalPairs} pairs cleared`;
+  }
+
+  function setRemoteState(text) {
+    const readout = players[1]?.els?.remoteState;
+    if (readout) readout.textContent = text;
   }
 
   function handlePick(player, r, c) {
@@ -142,7 +181,11 @@ export function mountApp(root) {
         }
         if (result.won) {
           player.finishedAt = duel.elapsed;
-          setTimeout(() => finish('cleared', player), CLEAR_MS + 40);
+          if (duel.mode === 'online') {
+            reportFinish(player, 'cleared');
+          } else {
+            setTimeout(() => finish('cleared', player.index), CLEAR_MS + 40);
+          }
         }
         break;
       case 'mismatch':
@@ -156,6 +199,13 @@ export function mountApp(root) {
         break;
     }
     syncPlayer(player);
+    if (duel.mode === 'online' && player.index === 0) {
+      net?.relay?.pushProgress({
+        score: player.session.score,
+        pairs: player.session.matchedPairs,
+        streak: player.session.streak,
+      });
+    }
   }
 
   function useHint(player) {
@@ -214,6 +264,10 @@ export function mountApp(root) {
         hint: cabinet.querySelector('[data-action="hint"]'),
         shuffle: cabinet.querySelector('[data-action="shuffle"]'),
         meter: cabinet.querySelector('[data-role="meter"]'),
+        remotePanel: cabinet.querySelector('[data-remote-panel]'),
+        remoteState: cabinet.querySelector('[data-role="remote-state"]'),
+        bigPairs: cabinet.querySelector('[data-role="big-pairs"]'),
+        bigTotal: cabinet.querySelector('[data-role="big-total"]'),
       },
     };
 
@@ -225,9 +279,68 @@ export function mountApp(root) {
 
     player.els.name.textContent = session.label;
     cabinet.dataset.state = 'playing';
+    delete cabinet.dataset.remote;
+    if (player.els.remotePanel) player.els.remotePanel.hidden = true;
     player.view.setVeil('');
     player.els.hint.onclick = () => useHint(player);
     player.els.shuffle.onclick = () => useShuffle(player);
+    syncPlayer(player);
+    return player;
+  }
+
+  /**
+   * The opponent in online mode. No board and no session — just the figures the
+   * relay sends us, shaped like a session so syncPlayer and stats work unchanged.
+   */
+  function buildRemotePlayer(index, setup, name) {
+    const preset = PRESETS[setup.difficulty];
+    const cabinet = dom.cabinets[index];
+    const totalPairs = (preset.rows * preset.cols) / 2;
+
+    cabinet.querySelector('[data-board-mount]').replaceChildren();
+    cabinet.dataset.remote = 'true';
+    cabinet.dataset.state = 'playing';
+
+    const player = {
+      index,
+      remote: true,
+      totalPairs,
+      finishedAt: null,
+      session: {
+        label: name,
+        score: 0,
+        matchedPairs: 0,
+        streak: 0,
+        bestStreak: 0,
+        mistakes: 0,
+        hintsLeft: 0,
+        shufflesLeft: 0,
+        status: 'playing',
+        board: { remaining: totalPairs * 2 },
+      },
+      // A board view this player does not have; finish() may still call these.
+      view: { setVeil() {}, render() {}, clearHint() {}, paintSelection() {} },
+      els: {
+        cabinet,
+        name: cabinet.querySelector('[data-role="name"]'),
+        score: cabinet.querySelector('[data-role="score"]'),
+        pairs: cabinet.querySelector('[data-role="pairs"]'),
+        streak: cabinet.querySelector('[data-role="streak"]'),
+        hints: cabinet.querySelector('[data-role="hints"]'),
+        shuffles: cabinet.querySelector('[data-role="shuffles"]'),
+        hint: cabinet.querySelector('[data-action="hint"]'),
+        shuffle: cabinet.querySelector('[data-action="shuffle"]'),
+        meter: cabinet.querySelector('[data-role="meter"]'),
+        remotePanel: cabinet.querySelector('[data-remote-panel]'),
+        remoteState: cabinet.querySelector('[data-role="remote-state"]'),
+        bigPairs: cabinet.querySelector('[data-role="big-pairs"]'),
+        bigTotal: cabinet.querySelector('[data-role="big-total"]'),
+      },
+    };
+
+    player.els.name.textContent = name;
+    player.els.remotePanel.hidden = false;
+    player.els.remoteState.textContent = 'Playing…';
     syncPlayer(player);
     return player;
   }
@@ -241,7 +354,13 @@ export function mountApp(root) {
       dom.clock.dataset.urgent = left <= 30 ? 'true' : 'false';
       if (left <= 5 && left > 0) sfx.tick();
       if (left <= 0) {
-        finish('time');
+        if (duel.mode === 'online') {
+          reportFinish(players[0], 'timeup');
+          clearInterval(timerId);
+          setRemoteState('Time — waiting for the opponent…');
+        } else {
+          finish('time', decideWinner());
+        }
         return;
       }
     } else {
@@ -249,8 +368,8 @@ export function mountApp(root) {
     }
   }
 
-  function decideWinner(reason, cleared) {
-    if (reason === 'cleared') return cleared.index;
+  /** Local mode only: who is ahead when the clock runs out. */
+  function decideWinner() {
     const [a, b] = players;
     if (a.session.matchedPairs !== b.session.matchedPairs) {
       return a.session.matchedPairs > b.session.matchedPairs ? 0 : 1;
@@ -259,12 +378,11 @@ export function mountApp(root) {
     return -1;
   }
 
-  function finish(reason, cleared = null) {
+  function finish(reason, winner = -1) {
     if (!duel || duel.over) return;
     duel.over = true;
     clearInterval(timerId);
 
-    const winner = decideWinner(reason, cleared);
     for (const player of players) {
       if (player.session.status === 'playing') timeOut(player.session);
       const won = player.index === winner;
@@ -312,7 +430,10 @@ export function mountApp(root) {
 
   function startDuel(setup, seed = randomSeed()) {
     clearInterval(timerId);
-    duel = { seed, setup, limit: setup.clock, elapsed: 0, over: false };
+    leaveRelay();
+    dom.arena.dataset.mode = 'local';
+    dom.lobby.hidden = true;
+    duel = { mode: 'local', seed, setup, limit: setup.clock, elapsed: 0, over: false };
     players = [0, 1].map((index) => buildPlayer(index, setup, seed));
     dom.seed.textContent = `#${seed.toString(36).toUpperCase()}`;
     dom.clock.textContent = clockText(setup.clock > 0 ? setup.clock : 0);
@@ -333,6 +454,10 @@ export function mountApp(root) {
 
   for (const button of dom.newDuel) {
     button.addEventListener('click', () => {
+      if (net) {
+        leaveRoom();
+        return;
+      }
       clearInterval(timerId);
       if (duel) duel.over = true;
       dom.result.hidden = true;
@@ -340,17 +465,9 @@ export function mountApp(root) {
     });
   }
 
-  dom.rematch.addEventListener('click', () => {
-    if (duel) startDuel(duel.setup, duel.seed);
-  });
-
-  dom.playAgain.addEventListener('click', () => {
-    if (duel) startDuel(duel.setup, duel.seed);
-  });
-
-  dom.freshBoard.addEventListener('click', () => {
-    if (duel) startDuel(duel.setup);
-  });
+  dom.rematch.addEventListener('click', () => requestRematch(true));
+  dom.playAgain.addEventListener('click', () => requestRematch(true));
+  dom.freshBoard.addEventListener('click', () => requestRematch(false));
 
   dom.sound.addEventListener('click', () => {
     const muted = setMuted(!isMuted());
@@ -393,6 +510,8 @@ export function mountApp(root) {
     const seedParam = params.get('seed');
     const parsedSeed = seedParam ? parseInt(seedParam, 36) : NaN;
     return {
+      room: params.get('room'),
+      name: params.get('name'),
       names: [params.get('p1'), params.get('p2')],
       difficulty: PRESETS[params.get('board')] ? params.get('board') : null,
       clock: params.has('clock') ? Number(params.get('clock')) : null,
@@ -401,21 +520,281 @@ export function mountApp(root) {
     };
   }
 
-  // Restore the last setup so a rematch is two clicks away.
-  const previous = saved();
-  if (previous.names) {
-    dom.startForm.elements.p1.value = previous.names[0] ?? '';
-    dom.startForm.elements.p2.value = previous.names[1] ?? '';
-  }
-  if (previous.difficulty && PRESETS[previous.difficulty]) {
-    dom.startForm.elements.difficulty.value = previous.difficulty;
-  }
-  if (previous.clock !== undefined && CLOCKS[previous.clock] !== undefined) {
-    dom.startForm.elements.clock.value = String(previous.clock);
+  /** An invite link lands here: open the online pane with the code filled in. */
+  function openInvite(query) {
+    const code = String(query.room).toUpperCase();
+    showMode('online');
+    dom.onlineForm.elements.room.value = code;
+    const remembered = saved().onlineName ?? '';
+    const name = (query.name ?? remembered).trim?.() ?? '';
+    dom.onlineForm.elements.name.value = name;
+
+    if (!isRelayConfigured()) {
+      note('This copy of the game has no relay configured, so online play is off.');
+      return;
+    }
+    if (name) {
+      enterRoom(code, name.slice(0, 18));
+      return;
+    }
+    note(`You were invited to room ${code}. Put your name in and join.`);
+    dom.onlineForm.elements.name.focus();
   }
 
-  const query = fromQuery();
-  if (query) {
+
+  // ---------------------------------------------------------------- online
+
+  const lobbyView = createLobbyView({ dom, getNet: () => net });
+  const { note, showMode, render: renderLobby, setLinkStatus } = lobbyView;
+
+  const iAmHost = () => Boolean(net && net.you && net.you === net.hostId);
+
+  function leaveRelay() {
+    net?.relay?.close();
+    net = null;
+    dom.linkState.hidden = true;
+  }
+
+  function onLinkStatus(status) {
+    if (!net) return;
+    net.link = status.state;
+    setLinkStatus(status);
+  }
+
+  function enterRoom(code, name) {
+    leaveRelay();
+    net = {
+      code,
+      name,
+      you: null,
+      hostId: null,
+      foeId: null,
+      players: [],
+      settings: { difficulty: 'normal', clock: 300 },
+      status: 'lobby',
+      link: 'connecting',
+      relay: null,
+    };
+    dom.start.hidden = true;
+    dom.result.hidden = true;
+    dom.lobby.hidden = false;
+    renderLobby();
+    net.relay = createRelay({ code, name, onMessage: onNetMessage, onStatus: onLinkStatus });
+    remember({ ...saved(), onlineName: name });
+  }
+
+  function leaveRoom() {
+    leaveRelay();
+    clearInterval(timerId);
+    if (duel) duel.over = true;
+    dom.lobby.hidden = true;
+    dom.result.hidden = true;
+    dom.start.hidden = false;
+    dom.arena.dataset.mode = 'local';
+  }
+
+  function reportFinish(player, reason) {
+    if (!net?.relay || !duel || duel.reported) return;
+    duel.reported = true;
+    net.relay.flush();
+    net.relay.send({
+      t: 'finish',
+      reason,
+      score: player.session.score,
+      pairs: player.session.matchedPairs,
+      elapsed: duel.elapsed,
+    });
+    setRemoteState(reason === 'cleared' ? 'You cleared it — confirming…' : 'Time up — waiting…');
+  }
+
+  function startOnlineRound({ seed, settings, players: roster }) {
+    clearInterval(timerId);
+    const mine = roster.find((p) => p.id === net.you);
+    const theirs = roster.find((p) => p.id !== net.you);
+    net.foeId = theirs?.id ?? null;
+    net.status = 'playing';
+
+    const setup = {
+      difficulty: PRESETS[settings.difficulty] ? settings.difficulty : 'normal',
+      clock: Number(settings.clock) || 0,
+      names: [mine?.name ?? net.name, theirs?.name ?? 'Opponent'],
+    };
+
+    duel = { mode: 'online', seed, setup, limit: setup.clock, elapsed: 0, over: false, reported: false };
+    dom.arena.dataset.mode = 'online';
+    players = [buildPlayer(0, setup, seed), buildRemotePlayer(1, setup, setup.names[1])];
+
+    dom.seed.textContent = `#${Number(seed).toString(36).toUpperCase()}`;
+    dom.clock.textContent = clockText(setup.clock > 0 ? setup.clock : 0);
+    dom.clock.dataset.urgent = 'false';
+    dom.lobby.hidden = true;
+    dom.start.hidden = true;
+    dom.result.hidden = true;
+    dom.rematch.disabled = !iAmHost();
+    timerId = setInterval(tick, 1000);
+    toast(`Duel on — same board as ${setup.names[1]}`);
+  }
+
+  function applyRemoteProgress(msg) {
+    const foe = players[1];
+    if (!duel || duel.mode !== 'online' || !foe?.remote || msg.from === net?.you) return;
+    foe.session.score = msg.score;
+    foe.session.matchedPairs = msg.pairs;
+    foe.session.streak = msg.streak;
+    foe.session.bestStreak = Math.max(foe.session.bestStreak, msg.streak);
+    foe.session.board.remaining = Math.max(0, foe.totalPairs * 2 - msg.pairs * 2);
+    syncPlayer(foe);
+  }
+
+  function applyRemoteResult(msg) {
+    if (!duel || duel.mode !== 'online') return;
+    const foe = players[1];
+    const theirs = (msg.players ?? []).find((p) => p.id === net?.foeId);
+    if (foe?.remote && theirs) {
+      foe.session.score = theirs.score;
+      foe.session.matchedPairs = theirs.pairs;
+      foe.session.status = 'lost';
+      foe.finishedAt = theirs.elapsed ?? null;
+      foe.session.board.remaining = Math.max(0, foe.totalPairs * 2 - theirs.pairs * 2);
+      syncPlayer(foe);
+    }
+    const winner = msg.winner === null || msg.winner === undefined ? -1 : msg.winner === net.you ? 0 : 1;
+    net.status = 'over';
+    finish(msg.reason, winner);
+    setRemoteState(winner === 1 ? 'Winner' : winner === -1 ? 'Draw' : 'Beaten');
+  }
+
+  function onNetMessage(msg) {
+    if (!net) return;
+    switch (msg.t) {
+      case 'welcome':
+        net.you = msg.you;
+        net.hostId = msg.hostId;
+        net.settings = msg.settings;
+        net.players = msg.players;
+        net.status = msg.status;
+        renderLobby();
+        break;
+      case 'peers':
+        net.hostId = msg.hostId;
+        net.players = msg.players;
+        if (duel?.mode === 'online' && players[1]?.remote) {
+          const theirs = msg.players.find((p) => p.id !== net.you);
+          if (theirs) players[1].els.name.textContent = theirs.name;
+        }
+        renderLobby();
+        break;
+      case 'settings':
+        net.settings = msg.settings;
+        renderLobby();
+        break;
+      case 'start':
+        startOnlineRound(msg);
+        break;
+      case 'progress':
+        applyRemoteProgress(msg);
+        break;
+      case 'result':
+        applyRemoteResult(msg);
+        break;
+      case 'peer_left':
+        if (msg.from !== net.you) {
+          toast(`${msg.name} disconnected`);
+          if (duel?.mode === 'online' && !duel.over) setRemoteState('Disconnected — keep going');
+        }
+        break;
+      case 'error':
+        toast(RELAY_ERRORS[msg.code] ?? `Relay: ${msg.code}`);
+        if (msg.code === 'room_full') {
+          leaveRoom();
+          showMode('online');
+          note('That room is full. Create a new one, or ask for a fresh link.');
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+  /** Online rematches go through the host; local ones are immediate. */
+  function requestRematch(sameSeed) {
+    if (duel?.mode === 'online') {
+      if (!iAmHost()) {
+        toast('Only the host can start the next round');
+        return;
+      }
+      net.relay.send({ t: 'rematch', sameSeed });
+      return;
+    }
+    if (duel) startDuel(duel.setup, sameSeed ? duel.seed : randomSeed());
+  }
+
+  for (const button of dom.modeButtons) {
+    button.addEventListener('click', () => showMode(button.dataset.modeBtn));
+  }
+
+  dom.onlineForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const data = new FormData(dom.onlineForm);
+    const name = String(data.get('name') ?? '').trim().slice(0, 18) || 'Player';
+    const typed = String(data.get('room') ?? '').trim().toUpperCase();
+    if (typed && !isRoomCode(typed)) {
+      note('A room code is 4-12 letters and digits, like K7M2QB.');
+      return;
+    }
+    if (!isRelayConfigured()) {
+      note('This copy of the game has no relay yet, so online play is off. Deploy the Worker in server/ and set RELAY_URL in src/net/config.js.');
+      return;
+    }
+    enterRoom(typed || newRoomCode(), name);
+  });
+
+  dom.copyInvite.addEventListener('click', async () => {
+    dom.inviteLink.select();
+    try {
+      await navigator.clipboard.writeText(dom.inviteLink.value);
+      toast('Invite link copied');
+    } catch {
+      toast('Press Ctrl+C to copy the selected link');
+    }
+  });
+
+  dom.hostStart.addEventListener('click', () => net?.relay?.send({ t: 'start' }));
+  dom.leaveRoom.addEventListener('click', leaveRoom);
+
+  for (const control of [dom.lobbyDifficulty, dom.lobbyClock]) {
+    control.addEventListener('change', () => {
+      if (!iAmHost()) return;
+      net.relay.send({
+        t: 'settings',
+        difficulty: dom.lobbyDifficulty.value,
+        clock: Number(dom.lobbyClock.value),
+      });
+    });
+  }
+
+  window.addEventListener('beforeunload', () => net?.relay?.close());
+
+
+  // ------------------------------------------------------------- start-up
+  // Runs last: everything above, including the lobby view, must exist first.
+
+  function restorePreferences() {
+    const previous = saved();
+    if (previous.names) {
+      dom.startForm.elements.p1.value = previous.names[0] ?? '';
+      dom.startForm.elements.p2.value = previous.names[1] ?? '';
+    }
+    if (previous.difficulty && PRESETS[previous.difficulty]) {
+      dom.startForm.elements.difficulty.value = previous.difficulty;
+    }
+    if (previous.clock !== undefined && CLOCKS[previous.clock] !== undefined) {
+      dom.startForm.elements.clock.value = String(previous.clock);
+    }
+    if (previous.onlineName) dom.onlineForm.elements.name.value = previous.onlineName;
+  }
+
+  function applyQuery(query) {
     const form = dom.startForm.elements;
     if (query.names[0]) form.p1.value = query.names[0].slice(0, 18);
     if (query.names[1]) form.p2.value = query.names[1].slice(0, 18);
@@ -424,5 +803,12 @@ export function mountApp(root) {
     if (query.auto) startDuel(readSetup(), query.seed ?? randomSeed());
   }
 
-  return { startDuel, get duel() { return duel; } };
+  restorePreferences();
+  showMode('local');
+
+  const query = fromQuery();
+  if (query?.room && isRoomCode(String(query.room))) openInvite(query);
+  else if (query) applyQuery(query);
+
+  return { startDuel, enterRoom, get duel() { return duel; } };
 }
