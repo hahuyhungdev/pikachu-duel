@@ -80,6 +80,12 @@ export function DuelGame({ rootRef }: DuelGameProps = {}) {
     advanceNextLevel,
     requestRematch,
     openNewDuel,
+    joinOnline,
+    changeOnlineDifficulty,
+    changeOnlineClock,
+    startOnlineDuel,
+    leaveOnlineRoom,
+    copyOnlineInvite,
   } = useDuel();
 
   const effectiveMode = duel?.mode ?? activeTabMode;
@@ -117,7 +123,7 @@ export function DuelGame({ rootRef }: DuelGameProps = {}) {
         isUrgent={isUrgent}
         canRematch={Boolean(duel)}
         isMuted={soundMuted}
-        linkState={online.link ? online.status : undefined}
+        linkState={online.link ? online.linkState || online.status : undefined}
         onRematch={() => requestRematch(true)}
         onNewDuel={openNewDuel}
         onToggleSound={toggleSound}
@@ -141,7 +147,7 @@ export function DuelGame({ rootRef }: DuelGameProps = {}) {
         onlineNote={online.note}
         onChangeMode={setActiveTabMode}
         onStartGame={startDuel}
-        onJoinOnline={() => {}}
+        onJoinOnline={joinOnline}
       />
 
       <LobbyOverlay
@@ -152,11 +158,11 @@ export function DuelGame({ rootRef }: DuelGameProps = {}) {
         peers={online.players}
         isHost={Boolean(online.you && online.you === online.hostId)}
         settings={online.settings}
-        onCopyInvite={() => {}}
-        onChangeDifficulty={() => {}}
-        onChangeClock={() => {}}
-        onStartDuel={() => {}}
-        onLeaveRoom={openNewDuel}
+        onCopyInvite={copyOnlineInvite}
+        onChangeDifficulty={changeOnlineDifficulty}
+        onChangeClock={changeOnlineClock}
+        onStartDuel={startOnlineDuel}
+        onLeaveRoom={leaveOnlineRoom}
       />
 
       <ResultOverlay

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { inBounds, isEmpty } from '../../../game/board.js';
+import { createBoard, inBounds, isEmpty } from '../../../game/board.js';
 import { randomSeed } from '../../../game/rng.js';
 import {
   createSession,
@@ -9,6 +9,7 @@ import {
   timeOut,
 } from '../../../game/session.js';
 import { createRelay } from '../../../net/client.js';
+import { isRelayConfigured, newRoomCode, inviteLink } from '../../../net/config.js';
 import { isMuted, setMuted, sfx } from '../../../shared/audio/sfx';
 import {
   calculateNextLevel,
@@ -20,11 +21,37 @@ import type {
   Difficulty,
   DuelMode,
   DuelSetup,
+  OnlinePeer,
   OnlineState,
   PlayerSession,
   PlayerState,
   Point,
 } from '../types/duel.types';
+
+interface RelayMessage {
+  t: string;
+  you?: string;
+  hostId?: string;
+  foeId?: string;
+  players?: OnlinePeer[];
+  settings?: { difficulty: Difficulty; clock: number };
+  status?: 'lobby' | 'playing' | 'over';
+  seed?: number;
+  score?: number;
+  pairs?: number;
+  streak?: number;
+  reason?: 'cleared' | 'time' | 'disconnect';
+  winner?: string | null;
+  name?: string;
+  code?: string;
+}
+
+interface RelayInstance {
+  close: () => void;
+  send: (msg: Record<string, unknown>) => boolean;
+  pushProgress: (stats: Record<string, unknown>) => void;
+  flush: () => void;
+}
 
 const STORE_KEY = 'pikachu-duel/setup';
 
@@ -71,9 +98,10 @@ function saveSetup(setup: DuelSetup, onlineName?: string) {
 }
 
 function getInitialMode(): DuelMode {
-  const saved = readSavedSetup();
   if (typeof window === 'undefined') return 'local';
   const params = new URLSearchParams(window.location.search);
+  if (params.get('room')) return 'online';
+  const saved = readSavedSetup();
   const modeParam = params.get('mode') as DuelMode | null;
   return modeParam ?? saved.mode ?? 'local';
 }
@@ -218,21 +246,43 @@ export function useDuel() {
   const [isResultOpen, setIsResultOpen] = useState(false);
 
   // Online multiplayer state
-  const [online] = useState<OnlineState>({
-    code: '',
-    name: '',
-    you: null,
-    hostId: null,
-    foeId: null,
-    players: [],
-    settings: { difficulty: 'normal', clock: 300 },
-    status: 'lobby',
-    link: '',
-    note: '',
+  const [online, setOnline] = useState<OnlineState>(() => {
+    const saved = readSavedSetup();
+    const roomParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('room') : null;
+    const code = roomParam ? roomParam.toUpperCase() : '';
+    return {
+      code,
+      name: saved.onlineName ?? '',
+      you: null,
+      hostId: null,
+      foeId: null,
+      players: [],
+      settings: { difficulty: 'normal', clock: 300 },
+      status: 'lobby',
+      link: code ? inviteLink(code) : '',
+      note: '',
+    };
   });
 
+  const onlineRef = useRef(online);
+  useEffect(() => {
+    onlineRef.current = online;
+  }, [online]);
+
+  const playersRef = useRef(players);
+  useEffect(() => {
+    playersRef.current = players;
+  }, [players]);
+
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const relayRef = useRef<ReturnType<typeof createRelay> | null>(null);
+  const relayRef = useRef<RelayInstance | null>(null);
+
+  useEffect(() => {
+    return () => {
+      relayRef.current?.close();
+      relayRef.current = null;
+    };
+  }, []);
 
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
@@ -365,7 +415,16 @@ export function useDuel() {
 
           if (left <= 0) {
             clearInterval(timer);
-            if (prev.mode === 'solo') {
+            if (prev.mode === 'online') {
+              relayRef.current?.flush();
+              relayRef.current?.send({
+                t: 'finish',
+                reason: 'time',
+                score: playersRef.current[0]?.session.score ?? 0,
+                pairs: playersRef.current[0]?.session.matchedPairs ?? 0,
+                elapsed: newElapsed,
+              });
+            } else if (prev.mode === 'solo') {
               setTimeout(() => finishDuel('time', -1), 0);
             } else {
               setPlayers((curPlayers) => {
@@ -484,7 +543,18 @@ export function useDuel() {
 
             if (result.won) {
               player.finishedAt = duel.elapsed;
-              setTimeout(() => finishDuel('cleared', playerIndex), CLEAR_MS + 40);
+              if (duel.mode === 'online') {
+                relayRef.current?.flush();
+                relayRef.current?.send({
+                  t: 'finish',
+                  reason: 'cleared',
+                  score: player.session.score,
+                  pairs: player.session.matchedPairs,
+                  elapsed: duel.elapsed,
+                });
+              } else {
+                setTimeout(() => finishDuel('cleared', playerIndex), CLEAR_MS + 40);
+              }
             }
 
             if (duel.mode === 'online' && playerIndex === 0) {
@@ -681,15 +751,338 @@ export function useDuel() {
     startDuel(nextSetup, randomSeed());
   }, [duel, startDuel]);
 
+  const startOnlineRound = useCallback(
+    (seed: number, settings: { difficulty: string; clock: number }, roster: OnlinePeer[]) => {
+      const normalizedDiff = (normalizeDifficulty(settings.difficulty) || 'normal') as Difficulty;
+      const preset = PRESETS[normalizedDiff] ?? PRESETS.normal;
+      const level = preset.level ?? 2;
+      const clock = Number(settings.clock) || 0;
+
+      const currentOnline = onlineRef.current;
+      const mine = roster.find((p) => p.id === currentOnline.you);
+      const theirs = roster.find((p) => p.id !== currentOnline.you);
+
+      const setup: DuelSetup = {
+        mode: 'online',
+        names: [mine?.name ?? currentOnline.name ?? 'Player One', theirs?.name ?? 'Opponent'],
+        difficulty: normalizedDiff,
+        clock,
+        level,
+      };
+
+      const myPlayer = buildPlayerState(0, setup, seed);
+
+      const totalPairs = (preset.rows * preset.cols) / 2;
+      const foeBoard = createBoard({
+        rows: preset.rows,
+        cols: preset.cols,
+        iconCount: preset.iconCount,
+        seed,
+      });
+
+      const foePlayer: PlayerState = {
+        index: 1,
+        label: setup.names[1],
+        remote: true,
+        remoteState: 'Playing…',
+        totalPairs,
+        session: {
+          label: setup.names[1],
+          seed,
+          board: foeBoard,
+          status: 'playing',
+          selected: null,
+          hint: null,
+          score: 0,
+          matchedPairs: 0,
+          streak: 0,
+          bestStreak: 0,
+          mistakes: 0,
+          hintsLeft: preset.hints,
+          shufflesLeft: preset.shuffles,
+          reshuffles: 0,
+        },
+        cursor: null,
+        clearingTiles: [],
+        shakingTiles: [],
+        traces: [],
+        floaters: [],
+        veil: null,
+      };
+
+      setDuel({
+        mode: 'online',
+        seed,
+        setup,
+        limit: clock,
+        elapsed: 0,
+        level,
+        over: false,
+        winner: -1,
+        reason: null,
+      });
+
+      setPlayers([myPlayer, foePlayer]);
+      setTimeLeft(clock);
+      setIsUrgent(false);
+      setIsStartOpen(false);
+      setIsLobbyOpen(false);
+      setIsResultOpen(false);
+
+      showToast(`Duel started! Playing against ${setup.names[1]}`);
+    },
+    [showToast],
+  );
+
+  const joinOnline = useCallback(
+    (requestedCode: string, name: string) => {
+      if (!isRelayConfigured()) {
+        showToast('This copy of the game has no relay configured.');
+        return;
+      }
+
+      const code = (requestedCode || newRoomCode()).toUpperCase();
+
+      relayRef.current?.close();
+
+      setOnline((prev) => ({
+        ...prev,
+        code,
+        name,
+        you: null,
+        hostId: null,
+        foeId: null,
+        players: [{ id: 'local-init', name, host: true }],
+        settings: { difficulty: 'normal', clock: 300 },
+        status: 'lobby',
+        linkState: 'connecting',
+        link: inviteLink(code),
+        note: 'Connecting to the relay…',
+      }));
+
+      setIsStartOpen(false);
+      setIsLobbyOpen(true);
+      setIsResultOpen(false);
+
+      saveSetup({ mode: 'online', names: [name, 'Player Two'], difficulty: 'normal', clock: 300 }, name);
+
+      const relay = (createRelay as unknown as (opts: {
+        code: string;
+        name: string;
+        onStatus: (status: { state: string; code?: number }) => void;
+        onMessage: (msg: RelayMessage) => void;
+      }) => RelayInstance)({
+        code,
+        name,
+        onStatus: (status: { state: string }) => {
+          setOnline((prev) => ({
+            ...prev,
+            linkState: status.state,
+            note:
+              status.state === 'open'
+                ? 'Connected to room. Waiting for players…'
+                : status.state === 'connecting'
+                ? 'Connecting to the relay…'
+                : status.state === 'dropped'
+                ? 'Connection lost — retrying…'
+                : status.state === 'error'
+                ? 'Connection error'
+                : prev.note,
+          }));
+        },
+        onMessage: (msg: RelayMessage) => {
+          switch (msg.t) {
+            case 'welcome':
+              setOnline((prev) => {
+                const isHost = msg.you === msg.hostId;
+                const playersList = msg.players ?? [];
+                const statusText =
+                  playersList.length < 2
+                    ? 'Send the room code or invite link to your opponent.'
+                    : isHost
+                    ? 'Both players connected! Choose settings and start.'
+                    : 'Both players connected! Waiting for host to start.';
+                return {
+                  ...prev,
+                  you: msg.you ?? null,
+                  hostId: msg.hostId ?? null,
+                  settings: msg.settings ?? prev.settings,
+                  players: playersList,
+                  status: msg.status ?? 'lobby',
+                  note: statusText,
+                };
+              });
+              break;
+
+            case 'peers':
+              setOnline((prev) => {
+                const isHost = prev.you === msg.hostId;
+                const playersList = msg.players ?? [];
+                const statusText =
+                  playersList.length < 2
+                    ? 'Waiting for opponent to join…'
+                    : isHost
+                    ? 'Both players connected! Choose settings and start.'
+                    : 'Both players connected! Waiting for host to start.';
+                return {
+                  ...prev,
+                  hostId: msg.hostId ?? null,
+                  players: playersList,
+                  note: statusText,
+                };
+              });
+
+              setPlayers((prevPlayers) => {
+                if (prevPlayers.length < 2 || !prevPlayers[1].remote) return prevPlayers;
+                const theirs = (msg.players ?? []).find((p) => p.id !== onlineRef.current.you);
+                if (!theirs) return prevPlayers;
+                return [
+                  prevPlayers[0],
+                  {
+                    ...prevPlayers[1],
+                    label: theirs.name,
+                    session: { ...prevPlayers[1].session, label: theirs.name },
+                  },
+                ];
+              });
+              break;
+
+            case 'settings':
+              if (msg.settings) {
+                setOnline((prev) => ({
+                  ...prev,
+                  settings: msg.settings!,
+                }));
+              }
+              break;
+
+            case 'start':
+              if (msg.seed && msg.settings && msg.players) {
+                startOnlineRound(msg.seed, msg.settings, msg.players);
+              }
+              break;
+
+            case 'progress':
+              setPlayers((prevPlayers) => {
+                if (prevPlayers.length < 2 || !prevPlayers[1].remote) return prevPlayers;
+                const foe = prevPlayers[1];
+                const newScore = msg.score ?? foe.session.score;
+                const newPairs = msg.pairs ?? foe.session.matchedPairs;
+                const newStreak = msg.streak ?? foe.session.streak;
+                return [
+                  prevPlayers[0],
+                  {
+                    ...foe,
+                    session: {
+                      ...foe.session,
+                      score: newScore,
+                      matchedPairs: newPairs,
+                      streak: newStreak,
+                      bestStreak: Math.max(foe.session.bestStreak, newStreak),
+                      board: {
+                        ...foe.session.board,
+                        remaining: Math.max(0, foe.totalPairs * 2 - newPairs * 2),
+                      },
+                    },
+                  },
+                ];
+              });
+              break;
+
+            case 'result': {
+              const winnerIdx =
+                msg.winner === null || msg.winner === undefined
+                  ? -1
+                  : msg.winner === onlineRef.current.you
+                  ? 0
+                  : 1;
+              finishDuel(msg.reason ?? 'cleared', winnerIdx);
+              break;
+            }
+
+            case 'peer_left':
+              showToast(`${msg.name ?? 'Opponent'} disconnected`);
+              break;
+
+            case 'error': {
+              const errCode = msg.code ?? 'unknown';
+              const errors: Record<string, string> = {
+                room_full: 'That room already has two players.',
+                not_host: 'Only the host can do that.',
+                need_two: 'Waiting for a second player to join.',
+                in_progress: 'The duel is already running.',
+                bad_code: 'Room code must be 4–12 letters or digits.',
+                too_fast: 'Disconnected for sending too fast.',
+              };
+              showToast(errors[errCode] ?? `Relay error: ${errCode}`);
+              break;
+            }
+          }
+        },
+      });
+
+      relayRef.current = relay;
+    },
+    [finishDuel, showToast, startOnlineRound],
+  );
+
+  const changeOnlineDifficulty = useCallback((difficulty: Difficulty) => {
+    setOnline((prev) => {
+      const nextSettings = { ...prev.settings, difficulty };
+      relayRef.current?.send({ t: 'settings', settings: nextSettings });
+      return { ...prev, settings: nextSettings };
+    });
+  }, []);
+
+  const changeOnlineClock = useCallback((clock: number) => {
+    setOnline((prev) => {
+      const nextSettings = { ...prev.settings, clock };
+      relayRef.current?.send({ t: 'settings', settings: nextSettings });
+      return { ...prev, settings: nextSettings };
+    });
+  }, []);
+
+  const startOnlineDuel = useCallback(() => {
+    relayRef.current?.send({ t: 'start' });
+  }, []);
+
+  const leaveOnlineRoom = useCallback(() => {
+    relayRef.current?.close();
+    relayRef.current = null;
+    setIsLobbyOpen(false);
+    setIsResultOpen(false);
+    setIsStartOpen(true);
+    showToast('Left online room');
+  }, [showToast]);
+
+  const copyOnlineInvite = useCallback(() => {
+    const link = onlineRef.current.link || inviteLink(onlineRef.current.code);
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(link);
+      showToast('Invite link copied to clipboard!');
+    }
+  }, [showToast]);
+
   const requestRematch = useCallback(
     (sameSeed = true) => {
       if (!duel) return;
+      if (duel.mode === 'online') {
+        const isHost = onlineRef.current.you === onlineRef.current.hostId;
+        if (!isHost) {
+          showToast('Only the room host can start a rematch.');
+          return;
+        }
+        relayRef.current?.send({ t: 'rematch', sameSeed });
+        return;
+      }
       startDuel(duel.setup, sameSeed ? duel.seed : randomSeed());
     },
-    [duel, startDuel],
+    [duel, showToast, startDuel],
   );
 
   const openNewDuel = useCallback(() => {
+    relayRef.current?.close();
+    relayRef.current = null;
     setIsResultOpen(false);
     setIsLobbyOpen(false);
     setIsStartOpen(true);
@@ -716,5 +1109,11 @@ export function useDuel() {
     advanceNextLevel,
     requestRematch,
     openNewDuel,
+    joinOnline,
+    changeOnlineDifficulty,
+    changeOnlineClock,
+    startOnlineDuel,
+    leaveOnlineRoom,
+    copyOnlineInvite,
   };
 }

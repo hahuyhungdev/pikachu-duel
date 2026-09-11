@@ -1,8 +1,23 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { DuelGame, PRESETS } from './index';
 import { calculateNextLevel, normalizeDifficulty } from '../../shared/game/presets.js';
 import { ICONS } from '../../game/icons.js';
+
+vi.mock('../../net/client.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../net/client.js')>();
+  return {
+    ...actual,
+    createRelay: vi.fn().mockImplementation(({ onStatus }) => {
+      onStatus?.({ state: 'connecting' });
+      return {
+        send: vi.fn(),
+        sendProgress: vi.fn(),
+        close: vi.fn(),
+      };
+    }),
+  };
+});
 
 describe('Pikachu Duel React feature', () => {
   it('uses a 16 by 9 Classic board as the default preset', () => {
@@ -120,4 +135,55 @@ describe('Pikachu Duel React feature', () => {
     expect(p1.querySelector('[data-role="lead-indicator"]')).toHaveTextContent(/LEAD/i);
     expect(p2.querySelector('[data-role="lead-indicator"]')).toHaveTextContent(/▼/);
   });
+
+  it('validates online room code and enters lobby upon valid submission', () => {
+    render(<DuelGame />);
+
+    // Switch to Online mode tab
+    const onlineTab = screen.getByRole('tab', { name: /online/i });
+    fireEvent.click(onlineTab);
+    expect(onlineTab).toHaveAttribute('aria-selected', 'true');
+
+    const nameInput = screen.getByPlaceholderText(/ash/i);
+    const roomInput = screen.getByPlaceholderText(/leave blank to create a room/i);
+    const joinBtn = screen.getByRole('button', { name: /create or join room/i });
+
+    // Set player name and invalid 3-character room code '123'
+    fireEvent.change(nameInput, { target: { value: 'huyhung' } });
+    fireEvent.change(roomInput, { target: { value: '123' } });
+    fireEvent.click(joinBtn);
+
+    // Shows validation error message
+    expect(
+      screen.getByText(/room code must be 4–12 letters or numbers/i),
+    ).toBeInTheDocument();
+
+    // Typing in room input clears error
+    fireEvent.change(roomInput, { target: { value: '1234' } });
+    expect(
+      screen.queryByText(/room code must be 4–12 letters or numbers/i),
+    ).not.toBeInTheDocument();
+
+    // Clicking join with valid 4-character code opens lobby
+    fireEvent.click(joinBtn);
+
+    expect(screen.getByRole('heading', { name: /room 1234/i })).toBeInTheDocument();
+    expect(screen.getByText('huyhung')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /copy link/i })).toBeInTheDocument();
+  });
+
+  it('generates a 6-character room code when room code is left blank', () => {
+    render(<DuelGame />);
+
+    fireEvent.click(screen.getByRole('tab', { name: /online/i }));
+    const nameInput = screen.getByPlaceholderText(/ash/i);
+    const joinBtn = screen.getByRole('button', { name: /create or join room/i });
+
+    fireEvent.change(nameInput, { target: { value: 'huyhung' } });
+    fireEvent.click(joinBtn);
+
+    const roomHeading = screen.getByRole('heading', { name: /room [A-Z0-9]{6}/i });
+    expect(roomHeading).toBeInTheDocument();
+  });
 });
+

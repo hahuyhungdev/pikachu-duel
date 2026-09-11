@@ -97,6 +97,7 @@ export interface OnlineState {
   players: OnlinePeer[];
   settings: { difficulty: Difficulty; clock: number };
   status: 'lobby' | 'playing' | 'over';
+  linkState?: string;
   link: string;
   note: string;
 }

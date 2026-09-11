@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { isRoomCode } from '../../../../net/config.js';
 import type { Difficulty, DuelMode, DuelSetup } from '../../types/duel.types';
 
 interface StartOverlayProps {
@@ -31,7 +32,14 @@ export function StartOverlay({
   const [difficulty, setDifficulty] = useState<Difficulty>(initialDifficulty);
   const [clock, setClock] = useState<number>(initialClock);
   const [onlineName, setOnlineName] = useState(initialP1 || 'Player');
-  const [onlineRoom, setOnlineRoom] = useState('');
+  const [onlineRoom, setOnlineRoom] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const roomParam = new URLSearchParams(window.location.search).get('room');
+      if (roomParam) return roomParam.toUpperCase();
+    }
+    return '';
+  });
+  const [roomError, setRoomError] = useState('');
 
   const handleStartSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -46,7 +54,13 @@ export function StartOverlay({
 
   const handleOnlineSubmit = (e: FormEvent) => {
     e.preventDefault();
-    onJoinOnline(onlineRoom.trim().toUpperCase(), onlineName.trim().slice(0, 18) || 'Player');
+    const cleanRoom = onlineRoom.trim().toUpperCase();
+    if (cleanRoom && !isRoomCode(cleanRoom)) {
+      setRoomError('Room code must be 4–12 letters or numbers (e.g. 1234 or K7M2QB), or leave blank to create a room.');
+      return;
+    }
+    setRoomError('');
+    onJoinOnline(cleanRoom, onlineName.trim().slice(0, 18) || 'Player');
   };
 
   return (
@@ -197,13 +211,18 @@ export function StartOverlay({
                 placeholder="Leave blank to create a room"
                 autoComplete="off"
                 value={onlineRoom}
-                onChange={(e) => setOnlineRoom(e.target.value.toUpperCase())}
+                onChange={(e) => {
+                  setOnlineRoom(e.target.value.toUpperCase());
+                  setRoomError('');
+                }}
               />
             </label>
           </div>
-          <p className="note" data-online-note>
-            {onlineNote}
-          </p>
+          {(roomError || onlineNote) && (
+            <p className="note" data-online-note style={{ color: roomError ? 'var(--alarm)' : undefined, fontWeight: roomError ? 600 : undefined }}>
+              {roomError || onlineNote}
+            </p>
+          )}
           <div className="panel__actions">
             <button className="btn btn--primary" type="submit">
               Create or join room
