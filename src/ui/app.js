@@ -10,9 +10,9 @@ import { createBoardView, CLEAR_MS } from './boardView.js';
 import { sfx, setMuted, isMuted } from './audio.js';
 
 export const PRESETS = {
-  rookie: { label: 'Rookie', rows: 6, cols: 6, iconCount: 9, hints: 5, shuffles: 5 },
-  trainer: { label: 'Trainer', rows: 8, cols: 8, iconCount: 14, hints: 3, shuffles: 3 },
-  champion: { label: 'Champion', rows: 8, cols: 10, iconCount: MAX_ICONS, hints: 2, shuffles: 2 },
+  easy: { label: 'Easy', rows: 8, cols: 10, iconCount: 16, hints: 3, shuffles: 3 },
+  normal: { label: 'Normal', rows: 10, cols: 12, iconCount: 20, hints: 2, shuffles: 2 },
+  hard: { label: 'Hard', rows: 12, cols: 14, iconCount: MAX_ICONS, hints: 1, shuffles: 1 },
 };
 
 const CLOCKS = { 180: '3 min', 300: '5 min', 480: '8 min', 0: 'No clock' };
@@ -84,13 +84,13 @@ export function mountApp(root) {
 
   function readSetup() {
     const data = new FormData(dom.startForm);
-    const difficulty = String(data.get('difficulty') ?? 'trainer');
+    const difficulty = String(data.get('difficulty') ?? 'normal');
     return {
       names: [
         String(data.get('p1') ?? '').trim().slice(0, 18) || 'Player One',
         String(data.get('p2') ?? '').trim().slice(0, 18) || 'Player Two',
       ],
-      difficulty: PRESETS[difficulty] ? difficulty : 'trainer',
+      difficulty: PRESETS[difficulty] ? difficulty : 'normal',
       clock: Number(data.get('clock') ?? 300),
     };
   }

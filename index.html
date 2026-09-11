@@ -8,7 +8,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=IBM+Plex+Sans:wght@400;600;700&display=swap">
 <link rel="stylesheet" href="src/styles/tokens.css">
 <link rel="stylesheet" href="src/styles/game.css">
 </head>
@@ -19,7 +19,7 @@
     <div class="brand">
       <span class="bolt" aria-hidden="true">⚡</span>
       <span>Pikachu <em>Duel</em></span>
-      <span class="field" style="margin-left:.5rem"><span data-seed>#—</span></span>
+      <span class="seed" data-seed>#—</span>
     </div>
     <output class="clock" data-clock aria-label="Match clock">05:00</output>
     <div class="hud__actions">
@@ -39,7 +39,7 @@
         </div>
         <dl class="stats">
           <div><dt>Score</dt><dd data-role="score">0</dd></div>
-          <div><dt>Pairs</dt><dd data-role="pairs">0/32</dd></div>
+          <div><dt>Pairs</dt><dd data-role="pairs">0/60</dd></div>
           <div><dt>Streak</dt><dd data-role="streak">×0</dd></div>
         </dl>
       </header>
@@ -47,8 +47,8 @@
       <div data-board-mount></div>
       <footer class="tools">
         <div class="hud__actions">
-          <button class="btn" type="button" data-action="hint">Hint <kbd>Q</kbd><span class="count" data-role="hints">3</span></button>
-          <button class="btn" type="button" data-action="shuffle">Shuffle <kbd>E</kbd><span class="count" data-role="shuffles">3</span></button>
+          <button class="btn" type="button" data-action="hint">Hint <kbd>Q</kbd><span class="count" data-role="hints">2</span></button>
+          <button class="btn" type="button" data-action="shuffle">Shuffle <kbd>E</kbd><span class="count" data-role="shuffles">2</span></button>
         </div>
         <p class="tools__keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · <kbd>Space</kbd> pick</p>
       </footer>
@@ -62,7 +62,7 @@
         </div>
         <dl class="stats">
           <div><dt>Score</dt><dd data-role="score">0</dd></div>
-          <div><dt>Pairs</dt><dd data-role="pairs">0/32</dd></div>
+          <div><dt>Pairs</dt><dd data-role="pairs">0/60</dd></div>
           <div><dt>Streak</dt><dd data-role="streak">×0</dd></div>
         </dl>
       </header>
@@ -70,8 +70,8 @@
       <div data-board-mount></div>
       <footer class="tools">
         <div class="hud__actions">
-          <button class="btn" type="button" data-action="hint">Hint <kbd>,</kbd><span class="count" data-role="hints">3</span></button>
-          <button class="btn" type="button" data-action="shuffle">Shuffle <kbd>.</kbd><span class="count" data-role="shuffles">3</span></button>
+          <button class="btn" type="button" data-action="hint">Hint <kbd>,</kbd><span class="count" data-role="hints">2</span></button>
+          <button class="btn" type="button" data-action="shuffle">Shuffle <kbd>.</kbd><span class="count" data-role="shuffles">2</span></button>
         </div>
         <p class="tools__keys"><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> move · <kbd>Enter</kbd> pick</p>
       </footer>
@@ -83,8 +83,8 @@
     <div class="panel">
       <h1>Pikachu<em>Duel</em></h1>
       <p class="panel__lede">
-        Two players, one identical board each, side by side. Clear your grid before
-        your opponent clears theirs.
+        The classic tile game, played by two people at once. You each get the same
+        board, side by side — clear yours before your opponent clears theirs.
       </p>
 
       <form data-start-form>
@@ -97,9 +97,9 @@
           </label>
           <label class="field">Board
             <select name="difficulty">
-              <option value="rookie">Rookie — 6 × 6</option>
-              <option value="trainer" selected>Trainer — 8 × 8</option>
-              <option value="champion">Champion — 8 × 10</option>
+              <option value="easy">Easy — 8 × 10 · 16 animals</option>
+              <option value="normal" selected>Normal — 10 × 12 · 20 animals</option>
+              <option value="hard">Hard — 12 × 14 · 24 animals</option>
             </select>
           </label>
           <label class="field">Clock
@@ -113,10 +113,11 @@
         </div>
 
         <ul class="rules">
-          <li>Pick <b>two identical tiles</b>. They clear if a path can join them with <b>at most two turns</b>.</li>
+          <li>Pick <b>two matching animals</b>. They clear if a path can join them with <b>at most two turns</b>.</li>
           <li>The path may only cross <b>empty space</b> — cleared tiles, or the gap around the outside of the board.</li>
           <li><b>Player 1</b> plays the left board: click, or <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> + <kbd>Space</kbd>, hint <kbd>Q</kbd>, shuffle <kbd>E</kbd>.</li>
           <li><b>Player 2</b> plays the right board: click, or <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> + <kbd>Enter</kbd>, hint <kbd>,</kbd>, shuffle <kbd>.</kbd>.</li>
+          <li>Every tile has the same face, so only the picture tells them apart — no colour shortcuts.</li>
           <li>Consecutive matches build a <b>streak</b> worth extra points. Run the clock out and the most pairs wins.</li>
         </ul>
 

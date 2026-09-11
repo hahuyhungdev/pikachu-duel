@@ -1,7 +1,8 @@
 # ⚡ Pikachu Duel
 
-A two-player **Pikachu / Onet "connect animal"** race for the browser. Both players
-get a byte-identical board, side by side, and the first to clear theirs wins.
+The classic **Pikachu / Onet "connect animal"** game, played by two people at once.
+Both players get a byte-identical board, side by side, and the first to clear theirs
+wins.
 
 No build step, no dependencies — plain ES modules.
 
@@ -13,7 +14,7 @@ npm start          # http://localhost:4173
 
 ## Rules
 
-Pick two identical tiles. They clear if a path can join them that
+Pick two matching animals. They clear if a path can join them that
 
 - runs only horizontally and vertically,
 - passes only through **empty space** — cleared tiles, or the gap around the outside
@@ -22,6 +23,9 @@ Pick two identical tiles. They clear if a path can join them that
 
 Because a path may leave the board, any two tiles on the outer ring can always reach
 each other around the edge. Consecutive matches build a streak worth extra points.
+
+Every tile wears the same ivory face, as in the original — only the picture tells two
+tiles apart, so there are no colour shortcuts.
 
 If a board runs out of legal moves it is reshuffled automatically — nobody gets stuck.
 
@@ -52,10 +56,18 @@ Setup can be passed in the URL, so the same deal can be handed to someone else:
 | Param     | Values                                     |
 | --------- | ------------------------------------------ |
 | `p1` `p2` | player names (18 chars max)                |
-| `board`   | `rookie` 6×6 · `trainer` 8×8 · `champion` 8×10 |
+| `board`   | `easy` 8×10 · `normal` 10×12 · `hard` 12×14 |
 | `clock`   | `180` · `300` · `480` · `0` (no clock)     |
 | `seed`    | base-36 seed — same seed, same board       |
 | `auto`    | `1` to skip the setup screen               |
+
+## Difficulty
+
+| Board    | Grid    | Animals | Hints | Shuffles |
+| -------- | ------- | ------- | ----- | -------- |
+| Easy     | 8 × 10  | 16      | 3     | 3        |
+| Normal   | 10 × 12 | 20      | 2     | 2        |
+| Hard     | 12 × 14 | 24      | 1     | 1        |
 
 ## Layout
 
@@ -67,7 +79,7 @@ src/game/               pure, testable game logic (no DOM)
   connect.js            the ≤2-turn path rule, hints, reshuffling
   board.js              board generation (guaranteed to open with a legal move)
   session.js            one player's run: selection, scoring, hints, shuffles
-  icons.js              tile faces and their colours
+  icons.js              the 24-animal tile cast
 src/ui/                 DOM layer
   app.js                duel orchestration, clock, keyboard, overlays
   boardView.js          renders a board, draws the path trace

@@ -99,8 +99,6 @@ export function createBoardView({ mount, session, onPick }) {
       delete tile.dataset.empty;
       face.textContent = spec.glyph;
       tile.style.setProperty('--tile-h', String(spec.h));
-      tile.style.setProperty('--tile-l', spec.l);
-      tile.style.setProperty('--tile-c', String(spec.c));
       tile.setAttribute('aria-label', `${spec.label}, row ${r} column ${c}`);
     }
     paintSelection();
