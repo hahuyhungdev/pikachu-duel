@@ -36,6 +36,7 @@ import {
 } from '../gameApi';
 import { isMuted, setMuted, sfx } from '../../../shared/audio/sfx';
 import { loadProfile, recordRun, type Profile } from '../../../shared/game/profile';
+import { submitScore } from '../../leaderboard/leaderboardApi';
 import type {
   Difficulty,
   GameMode,
@@ -338,6 +339,24 @@ export function useSolo() {
         previousBest: outcomeRecord?.previousBest ?? { score: 0, stage: 0, streak: 0 },
         newUnlocks: outcomeRecord?.newUnlocks ?? [],
       });
+
+      if (!runContinues && round.mode !== 'zen') {
+        submitScore({
+          mode: round.mode,
+          score: totalScore,
+          stage: round.stage,
+          streak: bestStreak,
+          pairs: totalPairs,
+        })
+          .then((res) => {
+            if (res?.rank) {
+              setSummary((prev) => (prev ? { ...prev, globalRank: res.rank } : prev));
+            }
+          })
+          .catch(() => {
+            /* offline or network error handled gracefully */
+          });
+      }
 
       setPhase(runContinues ? (cleared ? 'cleared' : 'failed') : 'over');
       if (cleared) sfx.win();

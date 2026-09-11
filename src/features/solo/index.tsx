@@ -6,6 +6,7 @@
  * `useSolo`; this file only decides what is on screen right now.
  */
 
+import { useState } from 'react';
 import { Board } from '../duel/components/Board';
 import { Toast } from '../duel/components/Toast';
 import { ModePicker } from './components/ModePicker';
@@ -13,6 +14,9 @@ import { RunHud } from './components/RunHud';
 import { RunResult } from './components/RunResult';
 import { StageIntro } from './components/StageIntro';
 import { useSolo } from './hooks/useSolo';
+import { useAuth } from '../leaderboard/hooks/useAuth';
+import { AuthModal } from '../leaderboard/components/AuthModal';
+import { LeaderboardModal } from '../leaderboard/components/LeaderboardModal';
 
 export interface SoloGameProps {
   onOpenDuel: () => void;
@@ -21,6 +25,10 @@ export interface SoloGameProps {
 export function SoloGame({ onOpenDuel }: SoloGameProps) {
   const solo = useSolo();
   const { board, hud, round, summary } = solo;
+  const { user, login, register, logout } = useAuth();
+
+  const [authOpen, setAuthOpen] = useState(false);
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
 
   const isMenu = solo.phase === 'menu';
   const isResultOpen = solo.phase === 'cleared' || solo.phase === 'failed' || solo.phase === 'over';
@@ -72,10 +80,13 @@ export function SoloGame({ onOpenDuel }: SoloGameProps) {
         difficulty={solo.difficulty}
         showDifficulty={solo.showDifficulty}
         profile={solo.profileSummary}
+        user={user}
         onSelect={solo.selectMode}
         onDifficulty={solo.setDifficulty}
         onStart={solo.startRun}
         onOpenDuel={onOpenDuel}
+        onOpenAuth={() => setAuthOpen(true)}
+        onOpenLeaderboard={() => setLeaderboardOpen(true)}
       />
 
       {solo.stageIntro && (
@@ -99,8 +110,24 @@ export function SoloGame({ onOpenDuel }: SoloGameProps) {
           onContinue={solo.continueRun}
           onRetryRun={solo.retryRun}
           onChangeMode={solo.changeMode}
+          onOpenLeaderboard={() => setLeaderboardOpen(true)}
         />
       )}
+
+      <AuthModal
+        isOpen={authOpen}
+        user={user}
+        onClose={() => setAuthOpen(false)}
+        onLogin={login}
+        onRegister={register}
+        onLogout={logout}
+      />
+
+      <LeaderboardModal
+        isOpen={leaderboardOpen}
+        onClose={() => setLeaderboardOpen(false)}
+        defaultMode={solo.mode}
+      />
 
       <Toast message={solo.toast} />
     </div>

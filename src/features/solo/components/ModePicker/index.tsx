@@ -15,6 +15,8 @@ import { PRESETS } from '../../../../shared/game/presets.js';
 import { FEVER_MULTIPLIER, FEVER_STREAK } from '../../../../game/session.js';
 import { BOMB_PENALTY_SECONDS, CHRONO_FREEZE_SECONDS, CHRONO_SURGE_SECONDS, GOLD_MULTIPLIER } from '../../../../game/marks.js';
 import { GRAVITY_LABELS } from '../../../../game/gravity.js';
+import { avatarSrc } from '../../../leaderboard/avatars';
+import type { User } from '../../../leaderboard/leaderboardApi';
 import type { Difficulty, GameMode, ModeCard, ProfileSummary } from '../../types/solo.types';
 
 interface ModePickerProps {
@@ -25,10 +27,13 @@ interface ModePickerProps {
   /** Only Classic and Zen let the player pick a board size. */
   showDifficulty: boolean;
   profile: ProfileSummary;
+  user?: User | null;
   onSelect: (mode: GameMode) => void;
   onDifficulty: (difficulty: Difficulty) => void;
   onStart: () => void;
   onOpenDuel: () => void;
+  onOpenAuth?: () => void;
+  onOpenLeaderboard?: () => void;
 }
 
 const DIFFICULTIES: readonly Difficulty[] = ['easy', 'normal', 'hard'];
@@ -49,10 +54,13 @@ export function ModePicker({
   difficulty,
   showDifficulty,
   profile,
+  user,
   onSelect,
   onDifficulty,
   onStart,
   onOpenDuel,
+  onOpenAuth,
+  onOpenLeaderboard,
 }: ModePickerProps) {
   const isFirstTime = profile.totalPlays === 0;
   const [guideOpen, setGuideOpen] = useState(isFirstTime);
@@ -64,6 +72,38 @@ export function ModePicker({
   return (
     <div className="overlay" data-overlay="mode-picker" hidden={!isOpen}>
       <div className="panel panel--modes">
+        <div className="menu-cloud-bar">
+          <button
+            className="btn btn--user-badge"
+            type="button"
+            data-action="open-auth"
+            onClick={onOpenAuth}
+            aria-label="Tài khoản người chơi"
+          >
+            {user ? (
+              <>
+                <img
+                  src={avatarSrc(user.avatar)}
+                  alt=""
+                  className="btn--user-avatar"
+                />
+                <span>{user.username}</span>
+              </>
+            ) : (
+              <span>👤 Đăng nhập / Hồ sơ</span>
+            )}
+          </button>
+
+          <button
+            className="btn btn--leaderboard-open"
+            type="button"
+            data-action="open-leaderboard"
+            onClick={onOpenLeaderboard}
+          >
+            🏆 Bảng Xếp Hạng
+          </button>
+        </div>
+
         <div className="panel__eyebrow">Solo run</div>
         <h1>Pick your board</h1>
         <p className="panel__lede">Same matching rules every time. Only the pressure changes.</p>

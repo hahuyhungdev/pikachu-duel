@@ -20,6 +20,7 @@ interface RunResultProps {
   onContinue: () => void;
   onRetryRun: () => void;
   onChangeMode: () => void;
+  onOpenLeaderboard?: () => void;
 }
 
 const STAR_SLOTS = [0, 1, 2];
@@ -87,6 +88,7 @@ export function RunResult({
   onContinue,
   onRetryRun,
   onChangeMode,
+  onOpenLeaderboard,
 }: RunResultProps) {
   const isLadder = LADDER_MODES.has(summary.mode);
   const showStars = STARRED_MODES.has(summary.mode);
@@ -116,8 +118,14 @@ export function RunResult({
           </ul>
         ) : null}
 
-        {phase === 'cleared' && ((summary.timeBonus && summary.timeBonus > 0) || summary.recoveredHeart || summary.recoveredAids) ? (
+        {((phase === 'cleared' && ((summary.timeBonus && summary.timeBonus > 0) || summary.recoveredHeart || summary.recoveredAids)) || summary.globalRank) ? (
           <div className="result__time-rewards" data-reward-strip>
+            {summary.globalRank ? (
+              <div className="time-reward time-reward--rank">
+                <span className="time-reward__badge">🏆 Hạng #{summary.globalRank} Toàn Cầu</span>
+                <span className="time-reward__desc">Điểm số đã được đồng bộ lên Bảng Xếp Hạng!</span>
+              </div>
+            ) : null}
             {summary.timeBonus && summary.timeBonus > 0 ? (
               <div className="time-reward time-reward--bonus">
                 <span className="time-reward__label">⏱ Speed Bonus (+50/s)</span>
@@ -235,6 +243,16 @@ export function RunResult({
               onClick={onContinue}
             >
               {continueLabel}
+            </button>
+          ) : null}
+          {onOpenLeaderboard ? (
+            <button
+              className="btn btn--leaderboard-open"
+              type="button"
+              data-action="open-leaderboard"
+              onClick={onOpenLeaderboard}
+            >
+              🏆 Bảng Xếp Hạng
             </button>
           ) : null}
           <button className="btn" type="button" data-action="retry-run" onClick={onRetryRun}>

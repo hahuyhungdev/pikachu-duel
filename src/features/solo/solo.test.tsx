@@ -279,4 +279,76 @@ describe('the solo run', () => {
     expect(clock).toHaveAttribute('data-overtime', 'true');
     expect(clock).toHaveTextContent(/⚡ 00:03/);
   });
+
+  it('opens and closes the AuthModal from the mode menu user button', () => {
+    const { container } = openSolo();
+    const userBtn = container.querySelector<HTMLButtonElement>('[data-action="open-auth"]');
+    expect(userBtn).not.toBeNull();
+
+    expect(container.querySelector('[data-overlay="auth-modal"]')).toBeNull();
+
+    fireEvent.click(userBtn!);
+    const authModal = container.querySelector('[data-overlay="auth-modal"]');
+    expect(authModal).not.toBeNull();
+
+    const closeBtn = within(authModal as HTMLElement).getByRole('button', { name: /đóng/i });
+    fireEvent.click(closeBtn);
+    expect(container.querySelector('[data-overlay="auth-modal"]')).toBeNull();
+  });
+
+  it('opens and closes the LeaderboardModal from the mode menu leaderboard button', () => {
+    const { container } = openSolo();
+    const lbBtn = container.querySelector<HTMLButtonElement>('[data-action="open-leaderboard"]');
+    expect(lbBtn).not.toBeNull();
+
+    expect(container.querySelector('[data-overlay="leaderboard-modal"]')).toBeNull();
+
+    fireEvent.click(lbBtn!);
+    const lbModal = container.querySelector('[data-overlay="leaderboard-modal"]');
+    expect(lbModal).not.toBeNull();
+
+    const closeBtn = within(lbModal as HTMLElement).getByRole('button', { name: /^đóng$/i });
+    fireEvent.click(closeBtn);
+    expect(container.querySelector('[data-overlay="leaderboard-modal"]')).toBeNull();
+  });
+
+  it('renders global rank badge and open leaderboard button in RunResult', () => {
+    let leaderboardOpened = false;
+    const summary: RunSummary = {
+      mode: 'adventure',
+      modeLabel: 'Adventure',
+      stage: 5,
+      stars: 3,
+      runScore: 12500,
+      stageScore: 2500,
+      pairs: 24,
+      bestStreak: 12,
+      heartsLeft: 3,
+      records: { score: true, stage: true, streak: true },
+      previousBest: { score: 10000, stage: 4, streak: 8 },
+      newUnlocks: [],
+      globalRank: 4,
+    };
+    const { container } = render(
+      <RunResult
+        isOpen={true}
+        phase="cleared"
+        summary={summary}
+        canContinue={true}
+        continueLabel="Next stage 6 →"
+        onContinue={() => {}}
+        onRetryRun={() => {}}
+        onChangeMode={() => {}}
+        onOpenLeaderboard={() => {
+          leaderboardOpened = true;
+        }}
+      />,
+    );
+
+    expect(screen.getByText(/Hạng #4 Toàn Cầu/)).toBeInTheDocument();
+    const lbBtn = container.querySelector<HTMLButtonElement>('.panel__actions [data-action="open-leaderboard"]');
+    expect(lbBtn).not.toBeNull();
+    fireEvent.click(lbBtn!);
+    expect(leaderboardOpened).toBe(true);
+  });
 });

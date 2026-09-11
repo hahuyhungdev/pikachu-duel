@@ -95,6 +95,7 @@ export interface RunSummary {
   timeLeft?: number;
   recoveredHeart?: boolean;
   recoveredAids?: boolean;
+  globalRank?: number;
 }
 
 /** One entry in the mode menu. */

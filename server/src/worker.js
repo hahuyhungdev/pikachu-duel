@@ -9,6 +9,9 @@
  */
 
 import { createRoom, handle } from './room.js';
+import { GameData } from './gameData.js';
+
+export { GameData };
 
 const ID_PATTERN = /^[A-Za-z0-9_-]{8,64}$/;
 const CODE_PATTERN = /^[A-Z0-9]{4,12}$/;
@@ -16,7 +19,15 @@ const MAX_FRAME_BYTES = 4096;
 const RATE_LIMIT = { windowMs: 1000, max: 40 };
 
 const json = (body, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+  new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      'content-type': 'application/json',
+      'access-control-allow-origin': '*',
+      'access-control-allow-headers': 'Content-Type, Authorization',
+      'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    },
+  });
 
 /** Only our own front-ends may use this relay. */
 function originAllowed(origin, env) {
@@ -36,7 +47,30 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
+    // CORS preflight
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          'Access-Control-Max-Age': '86400',
+        },
+      });
+    }
+
     if (url.pathname === '/health') return json({ ok: true, service: 'pikachu-duel-room' });
+
+    // Forward /api/* requests to GameData Durable Object
+    if (url.pathname.startsWith('/api/')) {
+      if (env.GAME_DATA) {
+        const dataId = env.GAME_DATA.idFromName('global');
+        const gameData = env.GAME_DATA.get(dataId);
+        return gameData.fetch(request);
+      }
+      return json({ error: 'service_unavailable', message: 'GAME_DATA binding not found' }, 503);
+    }
 
     const match = url.pathname.match(/^\/room\/([^/]+)$/);
     if (!match) return json({ error: 'not_found' }, 404);
