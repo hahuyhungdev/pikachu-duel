@@ -335,9 +335,9 @@ kbd {
 
 .duel-progress {
   display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  padding: 0.4rem 0.6rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0.75rem;
   background: var(--chrome-raised);
   border: 1px solid var(--chrome-edge);
   border-radius: var(--radius-sm);
@@ -368,6 +368,7 @@ kbd {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
   gap: var(--gap-tight);
 }
 
@@ -463,23 +464,6 @@ kbd {
 @keyframes pulse-critical {
   0% { transform: scale(1); opacity: 0.9; }
   100% { transform: scale(1.05); opacity: 1; }
-}
-
-.meter {
-  height: 6px;
-  background: var(--chrome-lo);
-  border: 1px solid var(--chrome-edge);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  box-shadow: var(--bevel-sunken);
-}
-
-.meter__fill {
-  display: block;
-  height: 100%;
-  width: 0%;
-  background: var(--accent);
-  transition: width var(--duration) var(--ease-out-expo);
 }
 
 /* ---------- Playfield ---------- */
@@ -895,7 +879,6 @@ kbd {
 
 .cabinet[data-remote='true'] [data-board-mount] { display: none; }
 .cabinet[data-remote='true'] .tools { display: none; }
-.cabinet[data-remote='true'] .meter { height: 18px; }
 
 .remote {
   display: flex;

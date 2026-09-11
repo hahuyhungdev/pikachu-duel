@@ -115,10 +115,6 @@ export function Cabinet({ player, opponent, mode, hidden, onPick, onHint, onShuf
             </div>
           )}
         </div>
-
-        <div className="meter" aria-hidden="true">
-          <span className="meter__fill" data-role="meter" style={{ width: `${playerPercent}%` }} />
-        </div>
       </div>
 
       <div data-board-mount>
