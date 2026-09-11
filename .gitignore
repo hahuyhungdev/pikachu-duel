@@ -3,4 +3,3 @@ dist/
 .wrangler/
 .playwright-mcp/
 scratch/
-package-lock.json
