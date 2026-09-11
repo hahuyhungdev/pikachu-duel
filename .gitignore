@@ -6,3 +6,4 @@ dist/
 graphify-out/
 scratch/
 .frontend-scan-report.md
+.playwright-profile/
