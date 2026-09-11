@@ -44,11 +44,12 @@ export default {
     const code = decodeURIComponent(match[1]).toUpperCase();
     if (!CODE_PATTERN.test(code)) return json({ error: 'bad_code' }, 400);
 
-    if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') {
-      return json({ error: 'expected_websocket' }, 426);
-    }
+    // Reject an unauthorised origin before anything else looks at the request.
     if (!originAllowed(request.headers.get('Origin'), env)) {
       return json({ error: 'origin_not_allowed' }, 403);
+    }
+    if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') {
+      return json({ error: 'expected_websocket' }, 426);
     }
 
     const room = env.ROOMS.get(env.ROOMS.idFromName(code));

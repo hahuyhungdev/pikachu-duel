@@ -5,7 +5,7 @@
  * testing against a local `wrangler dev`, the page accepts ?server=<url>.
  */
 
-export const RELAY_URL = '';
+export const RELAY_URL = 'https://pikachu-duel-room.marcus-eng.workers.dev';
 
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no O/0/I/1 to keep codes dictatable
 export const CODE_LENGTH = 6;
