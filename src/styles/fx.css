@@ -1,0 +1,931 @@
+/* Juice layer — the feedback that tells you a match landed.
+   Loaded after game.css so it may override where the base component styles are
+   deliberately quiet. Everything here lives in the same late-90s desktop world:
+   hard 2px bevels, chunky arcade sparks, no soft glass. Motion is restricted to
+   transform/opacity/clip-path/filter so nothing here can trigger layout. */
+
+/* Extra tokens the base palette never needed: a heat range above gold for
+   fever, a cold pair for frozen tiles, and fixed fx timings that survive the
+   reduced-motion collapse of --duration so the disable can be explicit. */
+:root {
+  --fever: oklch(70% 0.2 48);
+  --fever-deep: oklch(50% 0.18 40);
+  --fever-hot: oklch(88% 0.14 76);
+
+  --ice: oklch(90% 0.05 222);
+  --ice-deep: oklch(60% 0.11 234);
+  --ice-ink: oklch(38% 0.08 238);
+
+  --fuse: oklch(72% 0.21 62);
+  --ember: oklch(93% 0.13 84);
+  --spark: oklch(96% 0.09 92);
+
+  --heart: oklch(56% 0.2 22);
+  --heart-lo: oklch(38% 0.15 22);
+  --heart-out: oklch(46% 0.02 30);
+
+  --fx-shake: 220ms;
+  --fx-burst: 520ms;
+  --fx-pulse: 1100ms;
+  --fx-land: 380ms;
+}
+
+/* ---------- Combo meter ---------- */
+
+/* A sunken readout bolted onto the chrome, like the clock. The tiers escalate
+   by weight and heat rather than by growing the box, so the HUD never reflows. */
+.combo {
+  --combo-key: var(--ink-soft);
+  --combo-progress: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-tight);
+  padding: 0.3rem 0.6rem;
+  background: var(--chrome-raised);
+  border: 1px solid var(--chrome-edge);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--bevel-up);
+  transition: box-shadow var(--duration) linear;
+}
+
+.combo__label {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.combo__count {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 900;
+  line-height: 1;
+  color: var(--combo-key);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 0 var(--chrome-hi);
+  transform-origin: center;
+  transition: color var(--duration) linear;
+}
+
+/* The bar is a fixed-width trough; only the fill's scale changes, never its box. */
+.combo__bar {
+  inline-size: 5.5rem;
+  block-size: 0.6rem;
+  overflow: hidden;
+  background: oklch(20% 0.02 80);
+  border: 1px solid var(--chrome-edge);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--bevel-sunken);
+}
+
+.combo__fill {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  transform: scaleX(var(--combo-progress));
+  transform-origin: left center;
+  background: linear-gradient(90deg, var(--combo-key), var(--combo-key) 60%, var(--chrome-hi));
+  transition: transform var(--duration) var(--ease-snap);
+}
+
+.combo[data-tier='0'] { --combo-key: var(--ink-soft); }
+.combo[data-tier='1'] { --combo-key: var(--p1); }
+
+.combo[data-tier='2'] {
+  --combo-key: var(--gold-deep);
+  border-color: var(--gold-deep);
+}
+
+.combo[data-tier='2'] .combo__count { font-size: calc(var(--text-lg) * 1.08); }
+
+.combo[data-tier='3'] {
+  --combo-key: var(--fever);
+  border-color: var(--fever-deep);
+  box-shadow: var(--bevel-up), 0 0 0 1px var(--fever-deep);
+}
+
+.combo[data-tier='3'] .combo__count {
+  font-size: calc(var(--text-lg) * 1.18);
+  animation: fx-combo-throb var(--fx-pulse) var(--ease-snap) infinite;
+}
+
+/* Peak state: the whole readout reads hot, and the label stops whispering. */
+.combo[data-fever='true'] {
+  --combo-key: var(--fever-hot);
+  background: oklch(28% 0.09 44);
+  border-color: var(--fever);
+  box-shadow: inset 2px 2px 0 var(--fever), inset -2px -2px 0 var(--fever-deep);
+}
+
+.combo[data-fever='true'] .combo__label {
+  color: var(--fever-hot);
+  font-weight: 800;
+}
+
+.combo[data-fever='true'] .combo__count {
+  text-shadow: 0 1px 0 oklch(30% 0.1 40);
+  animation: fx-combo-throb calc(var(--fx-pulse) * 0.55) var(--ease-snap) infinite;
+}
+
+.combo[data-fever='true'] .combo__bar { border-color: var(--fever-deep); }
+
+/* ---------- Fever on the playfield ---------- */
+
+/* While fever is live the felt gets a driving inset frame. It is a pseudo-element
+   fading in and out rather than an animated box-shadow, so the pulse stays on the
+   compositor. .board already has layout containment via container-type, which
+   makes it the containing block; position:relative is belt-and-braces. */
+.arena[data-fever='true'] .board {
+  position: relative;
+  border-color: var(--fever-deep);
+}
+
+.arena[data-fever='true'] .board::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  pointer-events: none;
+  border-radius: var(--radius-sm);
+  box-shadow:
+    inset 0 0 0 2px var(--fever),
+    inset 0 0 0 4px var(--fever-deep),
+    inset 0 0 26px oklch(60% 0.19 46 / 0.55);
+  animation: fx-fever-pulse var(--fx-pulse) ease-in-out infinite;
+}
+
+
+/* ---------- Screen shake ---------- */
+
+/* Three weights of impact, all translate-only and all short enough to read as a
+   hit rather than a wobble. The board keeps its own transform origin centred so
+   a shake never drifts the playfield off its column. */
+.board[data-shake] { will-change: transform; }
+
+.board[data-shake='1'] { animation: fx-shake-1 180ms var(--ease-snap); }
+.board[data-shake='2'] { animation: fx-shake-2 240ms var(--ease-snap); }
+.board[data-shake='3'] { animation: fx-shake-3 320ms cubic-bezier(0.3, 0.1, 0.2, 1); }
+
+@keyframes fx-shake-1 {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  35% { transform: translate3d(-2px, 1px, 0); }
+  70% { transform: translate3d(2px, -1px, 0); }
+}
+
+@keyframes fx-shake-2 {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  20% { transform: translate3d(-4px, 2px, 0); }
+  45% { transform: translate3d(4px, -2px, 0); }
+  70% { transform: translate3d(-3px, -1px, 0); }
+  88% { transform: translate3d(2px, 1px, 0); }
+}
+
+@keyframes fx-shake-3 {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  12% { transform: translate3d(-7px, 3px, 0) rotate(-0.4deg); }
+  28% { transform: translate3d(6px, -4px, 0) rotate(0.4deg); }
+  44% { transform: translate3d(-5px, -2px, 0) rotate(-0.3deg); }
+  60% { transform: translate3d(4px, 3px, 0) rotate(0.25deg); }
+  78% { transform: translate3d(-2px, -1px, 0) rotate(0deg); }
+}
+
+@keyframes fx-fever-pulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+
+@keyframes fx-combo-throb {
+  0%, 100% { transform: scale(1); }
+  40% { transform: scale(1.14); }
+}
+
+/* ---------- Match burst ---------- */
+
+/* One burst per clear, parked at the match point in board percentages. The box
+   itself has no size — it is only an origin — so the sparks can fly past the
+   cell edges without the element ever affecting hit-testing or layout. */
+.burst {
+  --burst-x: 50%;
+  --burst-y: 50%;
+  --fx-spark-reach: 2.2rem;
+  --fx-spark-size: 4px;
+  --fx-spark-key: var(--spark);
+  position: absolute;
+  left: var(--burst-x);
+  top: var(--burst-y);
+  inline-size: 0;
+  block-size: 0;
+  z-index: 7;
+  pointer-events: none;
+}
+
+/* A single expanding ring sells the impact; the sparks sell the direction. */
+.burst::after {
+  content: '';
+  position: absolute;
+  inset: calc(var(--fx-spark-reach) * -0.5);
+  border: 2px solid var(--fx-spark-key);
+  border-radius: 50%;
+  animation: fx-burst-ring calc(var(--fx-burst) * 0.7) var(--ease-out-expo) forwards;
+}
+
+.burst__spark {
+  --spark-angle: 0deg;
+  --spark-delay: 0ms;
+  position: absolute;
+  inline-size: var(--fx-spark-size);
+  block-size: var(--fx-spark-size);
+  margin-block-start: calc(var(--fx-spark-size) / -2);
+  margin-inline-start: calc(var(--fx-spark-size) / -2);
+  background: var(--fx-spark-key);
+  box-shadow: 0 0 0 1px oklch(35% 0.1 60 / 0.5);
+  animation: fx-spark-fly var(--fx-burst) var(--ease-out-expo) var(--spark-delay) both;
+}
+
+/* Gold matches throw further and land in the coin palette. */
+.burst[data-kind='gold'] {
+  --fx-spark-reach: 3.4rem;
+  --fx-spark-size: 5px;
+  --fx-spark-key: var(--gold);
+}
+
+.burst[data-kind='gold']::after { border-color: var(--gold-deep); }
+
+/* Fever bursts are the loudest thing on screen: bigger throw, hotter key,
+   and a second ring offset in time so the flash reads as a double hit. */
+.burst[data-kind='fever'] {
+  --fx-spark-reach: 4.4rem;
+  --fx-spark-size: 6px;
+  --fx-spark-key: var(--fever-hot);
+}
+
+.burst[data-kind='fever']::after {
+  border-color: var(--fever);
+  border-width: 3px;
+}
+
+
+@keyframes fx-spark-fly {
+  0% {
+    transform: rotate(var(--spark-angle)) translateX(0) scale(0.6);
+    opacity: 0;
+  }
+  18% {
+    transform: rotate(var(--spark-angle)) translateX(calc(var(--fx-spark-reach) * 0.25)) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(var(--spark-angle)) translateX(var(--fx-spark-reach)) scale(0.25);
+    opacity: 0;
+  }
+}
+
+@keyframes fx-burst-ring {
+  0% { transform: scale(0.2); opacity: 0.9; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+
+/* ---------- Marked tiles ---------- */
+
+/* These are gameplay information, not decoration: a player has to tell gold,
+   ice and bomb apart at a 44px cell on a phone. Each mark therefore changes the
+   whole tile body — hue, border and inner ring — instead of adding a small badge
+   that vanishes at size. No pseudo-element is used for identity so the existing
+   [data-cursor] ring on ::after survives on marked tiles. */
+.tile[data-empty='true'][data-mark]::before { display: none; }
+
+/* Gold: the tile itself turns to coin. Unmistakable against ivory at any size. */
+.tile[data-mark='gold'] {
+  border-color: var(--gold-deep);
+  background:
+    linear-gradient(105deg, transparent 40%, oklch(100% 0 0 / 0.45) 50%, transparent 60%),
+    linear-gradient(160deg, var(--gold) 0%, oklch(90% 0.12 88) 48%, var(--gold-deep) 100%);
+  box-shadow:
+    inset 0 0 0 2px oklch(94% 0.1 92),
+    inset 2px 2px 0 oklch(98% 0.06 94),
+    inset -2px -2px 0 oklch(52% 0.12 74);
+}
+
+.tile[data-mark='gold'] .tile__sprite { filter: saturate(1.2) contrast(1.12) drop-shadow(0 1px 0 var(--gold-deep)); }
+
+/* Ice: cold body plus two hard fracture lines. The cracks are background layers
+   on the tile, so they cost nothing and never blur the sprite underneath. */
+.tile[data-mark='ice'] {
+  border-color: var(--ice-deep);
+  background:
+    linear-gradient(118deg, transparent 45%, oklch(100% 0 0 / 0.9) 46.5%, transparent 48%),
+    linear-gradient(-64deg, transparent 57%, oklch(100% 0 0 / 0.75) 58.5%, transparent 60%),
+    repeating-linear-gradient(52deg, oklch(100% 0 0 / 0.2) 0 3px, transparent 3px 8px),
+    linear-gradient(200deg, oklch(94% 0.04 222), var(--ice));
+  box-shadow: inset 0 0 0 2px oklch(97% 0.02 222), inset -2px -2px 0 var(--ice-deep);
+}
+
+.tile[data-mark='ice'] .tile__sprite { filter: saturate(0.45) brightness(1.06); }
+
+/* Bomb: ivory body kept so the sprite stays readable, but ringed in danger red
+   with the fuse count on a full-width band — a number in a corner chip is
+   unreadable at 44px, a band is not. */
+.tile[data-mark='bomb'] {
+  border-color: oklch(40% 0.16 30);
+  background: linear-gradient(180deg, var(--tile) 45%, oklch(86% 0.08 52) 100%);
+  box-shadow: inset 0 0 0 2px oklch(62% 0.19 34), inset 2px 2px 0 var(--tile-hi);
+}
+
+/* The lit ember, the one piece of motion kept here because it marks which tile
+   is counting down when several are on the board. */
+.tile[data-mark='bomb']::before {
+  content: '';
+  position: absolute;
+  inset-block-start: -3px;
+  inset-inline-end: 10%;
+  inline-size: 7px;
+  block-size: 7px;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--ember) 0 40%, var(--fuse) 41% 70%, transparent 72%);
+  animation: fx-fuse-flicker 420ms steps(3, end) infinite;
+}
+
+.tile__fuse {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  z-index: 3;
+  font-family: var(--font-ui);
+  font-size: clamp(10px, 0.34em, 16px);
+  font-weight: 800;
+  line-height: 1.45;
+  text-align: center;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  color: oklch(98% 0.01 90);
+  background: oklch(38% 0.15 32);
+  border-block-start: 1px solid oklch(22% 0.08 32);
+  pointer-events: none;
+}
+
+/* Last couple of moves: the band goes full alarm and the tile ticks. Colour
+   carries it on its own, so the tick is safe to drop under reduced motion. */
+.tile[data-fuse-critical='true'] {
+  border-color: var(--alarm);
+  box-shadow: inset 0 0 0 3px var(--alarm), inset 2px 2px 0 oklch(80% 0.14 34);
+  animation: fx-fuse-panic 380ms var(--ease-snap) infinite;
+}
+
+.tile[data-fuse-critical='true'] .tile__fuse {
+  color: oklch(99% 0.01 90);
+  background: var(--alarm);
+  border-block-start-color: oklch(30% 0.15 28);
+}
+
+.tile[data-fuse-critical='true']::before { animation-duration: 190ms; }
+
+/* Ice breaking: one short recoil and a flash. It only has to say "that came
+   off", so it stays cheap and never covers the neighbouring cells. */
+.tile[data-cracking='true'] { animation: fx-crack var(--duration-slow) var(--ease-snap) forwards; }
+
+@keyframes fx-fuse-flicker {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(1.3); }
+}
+
+@keyframes fx-fuse-panic {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  25% { transform: translate3d(-1px, 0, 0); }
+  75% { transform: translate3d(1px, 0, 0); }
+}
+
+@keyframes fx-crack {
+  0% { transform: scale(1); filter: brightness(1); }
+  15% { transform: scale(1.08) rotate(-1.5deg); filter: brightness(1.6); }
+  45% { transform: scale(0.97) rotate(0.8deg); filter: brightness(1); }
+  100% { transform: scale(1) rotate(0deg); filter: brightness(1); }
+}
+
+/* ---------- Gravity ---------- */
+
+/* After a clear the survivors are re-rendered already in their new cells, so the
+   animation runs backwards: start at the old offset and translate to rest. Cell
+   size comes from the board's own container box — the grid is 0.5fr + cols + 0.5fr,
+   which is exactly cols+1 fr units wide, so one cell is 100cqw/(cols+1). */
+.tile[data-falling='true'] {
+  --fall-dr: 0;
+  --fall-dc: 0;
+  --fx-cell-w: calc(100cqw / (var(--cols, 10) + 1));
+  --fx-cell-h: calc(100cqh / (var(--rows, 10) + 1));
+  z-index: 2;
+  animation: fx-fall var(--fx-land) var(--ease-snap) both;
+}
+
+@keyframes fx-fall {
+  0% {
+    transform: translate3d(
+      calc(var(--fall-dc) * var(--fx-cell-w) * -1),
+      calc(var(--fall-dr) * var(--fx-cell-h) * -1),
+      0
+    );
+  }
+  88% { transform: translate3d(0, 0, 0) scaleY(0.94); }
+  100% { transform: translate3d(0, 0, 0) scaleY(1); }
+}
+
+/* ---------- Run state: hearts, stars, clock ---------- */
+
+/* Lives read as stamped tokens in the chrome, not as emoji floating in space. */
+.hearts {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-hair);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.heart {
+  display: grid;
+  place-items: center;
+  inline-size: 1.1rem;
+  block-size: 1.1rem;
+  color: var(--heart);
+  background: var(--heart);
+  border: 1px solid var(--heart-out);
+  clip-path: polygon(50% 100%, 8% 45%, 8% 20%, 30% 5%, 50% 22%, 70% 5%, 92% 20%, 92% 45%);
+  transform-origin: center;
+  transition: filter var(--duration) linear;
+}
+
+/* Spent hearts stay in place as empty sockets — the count is legible without
+   counting gaps, and colour alone carries the state when motion is off. */
+.heart[data-spent='true'] {
+  background: oklch(30% 0.01 30);
+  border-color: oklch(24% 0.01 30);
+  filter: saturate(0);
+  opacity: 0.65;
+}
+
+.heart[data-breaking='true'] {
+  animation: fx-heart-break var(--duration-slow) var(--ease-snap) forwards;
+}
+
+/* Stars land one after another so a three-star clear reads as a sequence. */
+.stars {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-hair);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.star {
+  --star-index: 0;
+  display: grid;
+  place-items: center;
+  inline-size: 1.4rem;
+  block-size: 1.4rem;
+  background: oklch(32% 0.02 80);
+  border: 1px solid var(--chrome-edge);
+  clip-path: polygon(50% 0%, 62% 36%, 100% 38%, 70% 60%, 81% 100%, 50% 76%, 19% 100%, 30% 60%, 0% 38%, 38% 36%);
+  transform-origin: center;
+}
+
+.star[data-earned='true'] {
+  background: linear-gradient(170deg, var(--gold) 0%, var(--gold-deep) 100%);
+  border-color: var(--gold-deep);
+  animation: fx-star-pop var(--duration-slow) var(--ease-out-expo) calc(var(--star-index) * 120ms) both;
+}
+
+/* Past urgent: the final seconds. Scale and brightness only — the LCD keeps its
+   sunken panel and its gold face until critical flips it to alarm. */
+.clock[data-critical='true'] {
+  color: oklch(72% 0.21 28);
+  border-color: var(--alarm);
+  box-shadow: var(--bevel-sunken), 0 0 0 2px oklch(55% 0.2 28 / 0.6);
+  animation: fx-clock-critical 520ms var(--ease-snap) infinite;
+}
+
+@keyframes fx-heart-break {
+  0% { transform: scale(1) rotate(0deg); filter: brightness(1); }
+  18% { transform: scale(1.45) rotate(-6deg); filter: brightness(2.2) saturate(1.4); }
+  40% { transform: scale(0.9) rotate(5deg); filter: brightness(0.8) saturate(0.3); }
+  100% { transform: scale(1) rotate(0deg); filter: brightness(0.7) saturate(0); opacity: 0.65; }
+}
+
+@keyframes fx-star-pop {
+  0% { transform: scale(0.2) rotate(-40deg); opacity: 0; }
+  55% { transform: scale(1.3) rotate(8deg); opacity: 1; }
+  75% { transform: scale(0.94) rotate(-3deg); }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@keyframes fx-clock-critical {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.06); filter: brightness(1.45); }
+}
+
+/* ---------- Stage framing ---------- */
+
+/* The chip says which stage you are on; the objective says what ends it. Both
+   are read mid-game on a phone, so they are plain chrome with a hard edge and
+   real contrast rather than faint captions. */
+.stage-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: oklch(99% 0.01 90);
+  background: var(--p1);
+  border: 1px solid var(--chrome-edge);
+  border-radius: var(--radius-sm);
+  box-shadow: inset 1px 1px 0 oklch(62% 0.11 250), inset -1px -1px 0 oklch(32% 0.1 250);
+}
+
+.objective {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-tight);
+  margin: 0;
+  padding: 0.4rem 0.65rem;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--chrome-hi);
+  border: 1px solid var(--chrome-lo);
+  border-inline-start: 4px solid var(--gold-deep);
+  border-radius: var(--radius-sm);
+}
+
+.objective b { font-variant-numeric: tabular-nums; }
+
+.objective[data-met='true'] {
+  border-inline-start-color: var(--good);
+  color: var(--good);
+}
+
+/* Unlocks arrive over the board, so they are opaque and land above the toast. */
+.unlock-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  z-index: 80;
+  max-inline-size: min(22rem, calc(100vw - 2rem));
+  padding: 0.6rem 0.9rem;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--chrome-raised);
+  border: 1px solid var(--chrome-edge);
+  border-inline-start: 4px solid var(--gold);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--bevel-up), 0 8px 20px oklch(15% 0.03 200 / 0.45);
+  transform: translateX(-50%);
+  animation: fx-toast-land var(--duration) var(--ease-snap) both;
+}
+
+.unlock-toast[hidden] { display: none; }
+
+/* ---------- Result ---------- */
+
+/* A personal best is the only thing on this screen that should stop the eye,
+   so it is a hard ribbon in the gold ramp rather than another chrome panel. */
+.result__best {
+  display: inline-block;
+  margin-block-end: var(--gap);
+  padding: 0.35rem 1.1rem;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: oklch(24% 0.05 70);
+  background: linear-gradient(180deg, var(--gold) 0%, var(--gold-deep) 100%);
+  border: 2px solid oklch(38% 0.09 74);
+  border-radius: var(--radius-sm);
+  box-shadow: inset 2px 2px 0 oklch(94% 0.09 92), inset -2px -2px 0 oklch(50% 0.12 74);
+  transform-origin: left center;
+  animation: fx-ribbon-land var(--duration-slow) var(--ease-out-expo) both;
+}
+
+/* old → new, with the numbers aligned so the improvement is the obvious part. */
+.result__compare {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 0 0 var(--gap-wide);
+  font-size: var(--text-md);
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.result__compare del {
+  text-decoration-thickness: 2px;
+  color: var(--ink-faint);
+}
+
+.result__compare ins {
+  text-decoration: none;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 900;
+  color: var(--gold-deep);
+}
+
+.result__compare i {
+  font-style: normal;
+  color: var(--ink-faint);
+}
+
+/* Retry is the one thing most players want next, so it out-ranks .btn--primary
+   on size, colour and bevel weight. Every state is drawn, including focus. */
+.btn--retry {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  padding: 0.8rem 2rem;
+  min-block-size: 48px;
+  color: oklch(99% 0.01 90);
+  background: var(--p2);
+  border: 2px solid oklch(30% 0.13 28);
+  border-radius: var(--radius);
+  box-shadow:
+    inset 3px 3px 0 oklch(72% 0.16 28),
+    inset -3px -3px 0 oklch(36% 0.14 28),
+    0 3px 0 oklch(30% 0.13 28);
+  transition: background-color var(--duration-snap) linear, transform var(--duration-snap) linear;
+}
+
+.btn--retry:hover:not(:disabled) {
+  background: oklch(58% 0.19 28);
+  transform: translateY(-1px);
+}
+
+.btn--retry:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.btn--retry:active:not(:disabled) {
+  padding: 0.8rem 2rem;
+  transform: translateY(2px);
+  box-shadow:
+    inset 3px 3px 0 oklch(36% 0.14 28),
+    inset -3px -3px 0 oklch(72% 0.16 28),
+    0 1px 0 oklch(30% 0.13 28);
+}
+
+@keyframes fx-ribbon-land {
+  0% { transform: scale(1.5) rotate(-3deg); opacity: 0; }
+  60% { transform: scale(0.96) rotate(0.5deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@keyframes fx-toast-land {
+  0% { transform: translateX(-50%) translateY(0.75rem); opacity: 0; }
+  100% { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+/* ---------- Touch and small screens ---------- */
+
+/* The page itself must never scroll sideways; only the board mount may. */
+html, body { overflow-x: clip; }
+
+/* Phones with a notch or a home indicator: keep the shell's own gutter unless
+   the inset is larger, so nothing lands under the system chrome. */
+:root { --fx-gutter: clamp(1rem, 0.5rem + 1.2vw, 1.75rem); }
+
+.shell {
+  padding-inline-start: max(var(--fx-gutter), env(safe-area-inset-left, 0px));
+  padding-inline-end: max(var(--fx-gutter), env(safe-area-inset-right, 0px));
+  padding-block-end: max(var(--gap), env(safe-area-inset-bottom, 0px));
+}
+
+.overlay { padding-block-end: calc(var(--gap) + env(safe-area-inset-bottom, 0px)); }
+.toast { bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px)); }
+
+/* Coarse pointers get real hit areas. 44px is the floor for every control,
+   and inputs go to 16px so iOS stops zooming the page on focus. */
+@media (pointer: coarse) {
+  .btn {
+    min-block-size: 44px;
+    min-inline-size: 44px;
+    padding-inline: 1rem;
+  }
+
+  .btn:active:not(:disabled) {
+    min-block-size: 44px;
+    padding: 0.5rem 0.95rem 0.4rem 1.05rem;
+  }
+
+  .btn--primary { min-block-size: 48px; }
+  .mode { min-block-size: 56px; }
+
+  .field select,
+  .field input,
+  .invite input {
+    min-block-size: 44px;
+    font-size: 1rem;
+  }
+
+  .invite .btn { flex: 0 0 auto; }
+
+  /* Run state is glanced at mid-swipe, so give it a size that survives a thumb. */
+  .heart { inline-size: 1.35rem; block-size: 1.35rem; }
+  .star { inline-size: 1.8rem; block-size: 1.8rem; }
+  .stage-chip { padding: 0.35rem 0.7rem; }
+}
+
+/* Nothing may depend on hover. These reset the desktop hover tints so a tapped
+   control does not keep a stuck highlight after the finger lifts. */
+@media (hover: none) {
+  .tile:hover { background: var(--tile); }
+  .tile[data-selected='true']:hover { background: oklch(91% 0.15 92); }
+  .tile[data-mark='gold']:hover,
+  .tile[data-mark='ice']:hover,
+  .tile[data-mark='bomb']:hover { background-color: transparent; }
+  .btn:hover:not(:disabled) { background: var(--chrome-raised); }
+  .btn--primary:hover:not(:disabled) { background: var(--p2); }
+
+  .btn--retry:hover:not(:disabled) {
+    background: var(--p2);
+    transform: none;
+  }
+
+  .tools__keys { display: none; }
+}
+
+/* The ladder's biggest board (12 x 16) cannot fit a phone at a tappable size, so
+   it keeps its 44px-per-cell floor and the mount scrolls sideways instead of the
+   cells shrinking. .board-wrap is narrowed to the board's real width so the
+   connecting-line SVG — which stretches to that box — stays registered with the
+   grid while it scrolls. The padding/negative-margin pair buys the floaters and
+   the shake some headroom inside the scrollport without moving anything. */
+@media (max-width: 900px), (pointer: coarse) {
+  [data-board-mount] {
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    padding-block: 1.5rem;
+    margin-block: -1.5rem;
+  }
+
+  /* fit-content grows to the board's 44px-per-cell floor when that is wider than
+     the mount, and min-inline-size keeps it filling the column when it is not —
+     so .board's own width:100% stays correct at both ends and the SVG box always
+     matches the grid box. Capping this at 100% would desync the two. */
+  .board-wrap {
+    inline-size: fit-content;
+    min-inline-size: 100%;
+    overflow: visible;
+  }
+
+  .board { min-inline-size: var(--board-min, 0px); }
+}
+
+/* Narrow phones: the HUD becomes one centred column and every horizontal row in
+   the game is allowed to wrap. Nothing here shrinks a tile or a control. */
+@media (max-width: 560px) {
+  .hud {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+    row-gap: var(--gap-tight);
+  }
+
+  .clock {
+    grid-row: auto;
+    grid-column: auto;
+  }
+
+  .hud__actions {
+    grid-row: auto;
+    grid-column: auto;
+    justify-content: center;
+  }
+
+  .brand {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .cabinet__head { justify-content: center; }
+  .stats { flex-wrap: wrap; justify-content: center; }
+
+  .objective {
+    flex-wrap: wrap;
+    font-size: var(--text-xs);
+  }
+
+  /* The combo readout spans the row so the bar keeps a useful length. */
+  .combo {
+    inline-size: 100%;
+    justify-content: space-between;
+  }
+
+  .combo__bar {
+    flex: 1 1 auto;
+    inline-size: auto;
+    min-inline-size: 3rem;
+  }
+
+  .panel { padding: var(--gap); }
+  .result__banner { font-size: var(--text-xl); }
+  .scoreboard { grid-template-columns: 1fr; }
+  .result__compare { font-size: var(--text-sm); }
+
+  /* Retry is the primary exit from this screen, so on a phone it is full width. */
+  .btn--retry {
+    inline-size: 100%;
+    justify-content: center;
+  }
+
+  .panel__actions { flex-direction: column; align-items: stretch; }
+  .panel__actions .btn { inline-size: 100%; }
+}
+
+/* Below ~360px the burst reach is trimmed so sparks never cover the neighbouring
+   cells the player is trying to read. */
+@media (max-width: 360px) {
+  .burst { --fx-spark-reach: 1.5rem; }
+  .burst[data-kind='gold'] { --fx-spark-reach: 2rem; }
+  .burst[data-kind='fever'] { --fx-spark-reach: 2.4rem; }
+  .combo__label { display: none; }
+}
+
+/* ---------- Reduced motion ---------- */
+
+/* tokens.css collapses the duration tokens, but every keyframe here names its own
+   timing, so each one is switched off explicitly. The rule is that no state may
+   be knowable only by movement: fever keeps its frame at full strength, the fuse
+   keeps its alarm colours, earned stars and the best-run ribbon simply start in
+   their final position, and the purely kinetic burst is removed outright. */
+@media (prefers-reduced-motion: reduce) {
+  .combo[data-tier='3'] .combo__count,
+  .combo[data-fever='true'] .combo__count { animation: none; }
+
+  .arena[data-fever='true'] .board::after {
+    animation: none;
+    opacity: 1;
+  }
+
+  .board[data-shake] {
+    animation: none;
+    will-change: auto;
+  }
+
+  .burst { display: none; }
+
+  .tile[data-mark='bomb']::before,
+  .tile[data-fuse-critical='true']::before {
+    animation: none;
+    opacity: 1;
+  }
+
+  .tile[data-fuse-critical='true'] { animation: none; }
+  .tile[data-cracking='true'] { animation: none; }
+
+  /* The tile is already rendered in its resting cell, so dropping the animation
+     leaves it correct rather than stranded at the old offset. */
+  .tile[data-falling='true'] { animation: none; }
+
+  .heart[data-breaking='true'] {
+    animation: none;
+    background: oklch(30% 0.01 30);
+    border-color: oklch(24% 0.01 30);
+    filter: saturate(0);
+    opacity: 0.65;
+  }
+
+  .star[data-earned='true'] {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .clock[data-critical='true'] { animation: none; }
+
+  .result__best {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .unlock-toast {
+    animation: none;
+    opacity: 1;
+    transform: translateX(-50%);
+  }
+
+  .btn--retry,
+  .btn--retry:hover:not(:disabled),
+  .btn--retry:active:not(:disabled) { transform: none; }
+}

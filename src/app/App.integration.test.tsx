@@ -1,10 +1,10 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import App from '../App';
+import { DuelGame } from '../features/duel';
 
 function startDuel() {
-  const result = render(<App />);
+  const result = render(<DuelGame />);
   fireEvent.click(screen.getByRole('button', { name: /start duel/i }));
 
   const playerOne = result.container.querySelector<HTMLElement>('[data-player="1"]');
@@ -130,7 +130,7 @@ describe('App core duel interactions', () => {
   });
 
   it('displays Level 1 · Medium by default and allows starting on Easy difficulty', () => {
-    const { container } = render(<App />);
+    const { container } = render(<DuelGame />);
 
     // Change difficulty to Easy on the start form
     const boardSelect = screen.getByRole('combobox', { name: /board/i });
@@ -163,7 +163,7 @@ describe('App core duel interactions', () => {
   });
 
   it('switches to solo mode, hides player 2 cabinet, and adapts badges and controls', async () => {
-    const { container } = render(<App />);
+    const { container } = render(<DuelGame />);
 
     const soloTab = screen.getByRole('tab', { name: /solo/i });
     fireEvent.click(soloTab);
@@ -227,7 +227,7 @@ describe('App core duel interactions', () => {
 
   it('supports launching solo mode via query parameters', () => {
     window.history.replaceState({}, '', '/?mode=solo&difficulty=easy&auto=1');
-    const { container } = render(<App />);
+    const { container } = render(<DuelGame />);
 
     const arena = container.querySelector('[data-arena]');
     expect(arena).toHaveAttribute('data-mode', 'solo');

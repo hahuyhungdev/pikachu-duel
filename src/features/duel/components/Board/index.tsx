@@ -1,7 +1,23 @@
 import { useMemo, type CSSProperties } from 'react';
 import { getTile, inBounds } from '../../../../game/board.js';
 import type { BoardData, Floater, Point, TracePath, VeilInfo } from '../../types/duel.types';
-import { Tile } from '../Tile';
+import { Tile, type TileMarkKind } from '../Tile';
+
+/** Mark ids as `src/game/marks.js` stores them, mapped to what the Tile renders. */
+const MARK_KINDS: Record<number, TileMarkKind> = { 1: 'gold', 2: 'ice', 3: 'bomb' };
+
+export interface BoardMark {
+  r: number;
+  c: number;
+  mark: number;
+  fuse: number;
+}
+
+export interface BoardSlide {
+  key: string;
+  dr: number;
+  dc: number;
+}
 
 interface BoardProps {
   board: BoardData;
@@ -14,6 +30,11 @@ interface BoardProps {
   traces: TracePath[];
   floaters: Floater[];
   veil: VeilInfo | null;
+  /** Special tiles currently on the board. Empty for a plain duel board. */
+  marks?: BoardMark[];
+  /** Tiles that just travelled under gravity, so they can slide into place. */
+  slides?: BoardSlide[];
+  crackingTiles?: string[];
   onPick: (r: number, c: number) => void;
 }
 
@@ -28,6 +49,9 @@ export function Board({
   traces,
   floaters,
   veil,
+  marks = [],
+  slides = [],
+  crackingTiles = [],
   onPick,
 }: BoardProps) {
   const padRows = board.rows + 2;
@@ -40,6 +64,12 @@ export function Board({
 
   const clearingSet = useMemo(() => new Set(clearingTiles), [clearingTiles]);
   const shakingSet = useMemo(() => new Set(shakingTiles), [shakingTiles]);
+  const crackingSet = useMemo(() => new Set(crackingTiles), [crackingTiles]);
+  const markMap = useMemo(
+    () => new Map(marks.map((m) => [`${m.r},${m.c}`, m])),
+    [marks],
+  );
+  const slideMap = useMemo(() => new Map(slides.map((s) => [s.key, s])), [slides]);
 
   const cells: Array<{ r: number; c: number; isVoid: boolean; iconId: number }> = [];
   for (let r = 0; r < padRows; r += 1) {
@@ -57,7 +87,7 @@ export function Board({
     ['--cols' as string]: String(board.cols),
     ['--unit-w' as string]: String(unitW),
     ['--unit-h' as string]: String(unitH),
-    ['--board-min' as string]: `${unitW * 44}px`,
+    ['--board-min' as string]: `${unitW * 46}px`,
   };
 
   return (
@@ -81,6 +111,8 @@ export function Board({
           const isCursor = cursor ? cursor.r === r && cursor.c === c : false;
           const isShaking = shakingSet.has(key);
           const isClearing = clearingSet.has(key);
+          const marked = markMap.get(key);
+          const slide = slideMap.get(key);
 
           return (
             <Tile
@@ -93,6 +125,10 @@ export function Board({
               isCursor={isCursor}
               isShaking={isShaking}
               isClearing={isClearing}
+              isCracking={crackingSet.has(key)}
+              mark={marked ? (MARK_KINDS[marked.mark] ?? null) : null}
+              fuse={marked?.fuse ?? 0}
+              slide={slide ? { dr: slide.dr, dc: slide.dc } : null}
               onClick={() => onPick(r, c)}
             />
           );
