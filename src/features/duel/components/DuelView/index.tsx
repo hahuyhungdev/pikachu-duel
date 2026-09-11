@@ -1,212 +1,176 @@
-import type { RefObject } from 'react';
+import { useMemo, type RefObject } from 'react';
+import { createBoard } from '../../../../game/board.js';
+import {
+  calculateNextLevel,
+  PRESETS,
+} from '../../../../shared/game/presets.js';
+import type { useDuel } from '../../hooks/useDuel';
+import type { DuelMode, PlayerState } from '../../types/duel.types';
+import { Arena } from '../Arena';
+import { Hud } from '../Hud';
+import { LobbyOverlay } from '../LobbyOverlay';
+import { ResultOverlay } from '../ResultOverlay';
+import { StartOverlay } from '../StartOverlay';
+import { Toast } from '../Toast';
 
-interface DuelViewProps {
-  rootRef: RefObject<HTMLDivElement | null>;
+function createInitialPlayer(index: number, mode: DuelMode): PlayerState {
+  const preset = PRESETS.normal;
+  const totalPairs = (preset.rows * preset.cols) / 2;
+  const board = createBoard({
+    rows: preset.rows,
+    cols: preset.cols,
+    iconCount: preset.iconCount,
+    seed: 1,
+  });
+  const label = mode === 'solo' ? 'Player' : index === 0 ? 'Player One' : 'Player Two';
+  return {
+    index,
+    label,
+    session: {
+      label,
+      seed: 1,
+      board,
+      status: 'playing',
+      selected: null,
+      hint: null,
+      score: 0,
+      matchedPairs: 0,
+      streak: 0,
+      bestStreak: 0,
+      mistakes: 0,
+      hintsLeft: preset.hints,
+      shufflesLeft: preset.shuffles,
+      reshuffles: 0,
+    },
+    totalPairs,
+    cursor: null,
+    clearingTiles: [],
+    shakingTiles: [],
+    traces: [],
+    floaters: [],
+    veil: null,
+  };
 }
 
-function PlayerCabinet({ player }: { player: 1 | 2 }) {
-  const first = player === 1;
-  return (
-    <section className="cabinet" data-cabinet data-player={player} data-state="playing">
-      <header className="cabinet__head">
-        <div className="who">
-          <span className="badge">P{player}</span>
-          <h2 data-role="name">Player {first ? 'One' : 'Two'}</h2>
-        </div>
-        <dl className="stats">
-          <div><dt>Score</dt><dd data-role="score">0</dd></div>
-          <div><dt>Pairs</dt><dd data-role="pairs">0/72</dd></div>
-          <div><dt>Streak</dt><dd data-role="streak">×0</dd></div>
-        </dl>
-      </header>
-      <div className="meter"><span className="meter__fill" data-role="meter" /></div>
-      <div data-board-mount />
-      {!first && (
-        <div className="remote" data-remote-panel hidden>
-          <p className="remote__figure">
-            <strong data-role="big-pairs">0</strong>
-            <span data-role="big-total">of 72 pairs cleared</span>
-          </p>
-          <p className="remote__state" data-role="remote-state">Waiting for the duel to start…</p>
-        </div>
-      )}
-      <footer className="tools">
-        <div className="hud__actions">
-          <button className="btn" type="button" data-action="hint">
-            Hint <kbd>{first ? 'Q' : ','}</kbd><span className="count" data-role="hints">2</span>
-          </button>
-          <button className="btn" type="button" data-action="shuffle">
-            Shuffle <kbd>{first ? 'E' : '.'}</kbd><span className="count" data-role="shuffles">2</span>
-          </button>
-        </div>
-        <p className="tools__keys">
-          {first ? <><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></> : <><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></>} move · <kbd>{first ? 'Space' : 'Enter'}</kbd> pick
-        </p>
-      </footer>
-    </section>
+export type DuelViewProps = ReturnType<typeof useDuel> & {
+  rootRef?: RefObject<HTMLDivElement | null>;
+};
+
+export function DuelView({
+  rootRef,
+  activeTabMode,
+  setActiveTabMode,
+  duel,
+  players,
+  timeLeft,
+  isUrgent,
+  toastMessage,
+  soundMuted,
+  toggleSound,
+  isStartOpen,
+  isLobbyOpen,
+  isResultOpen,
+  online,
+  startDuel,
+  handlePick,
+  triggerPlayerHint,
+  triggerPlayerShuffle,
+  advanceNextLevel,
+  requestRematch,
+  openNewDuel,
+}: DuelViewProps) {
+  const effectiveMode = duel?.mode ?? activeTabMode;
+
+  const defaultPlayers = useMemo(
+    () => [createInitialPlayer(0, effectiveMode), createInitialPlayer(1, effectiveMode)],
+    [effectiveMode],
   );
-}
 
-function StartOverlay() {
-  return (
-    <div className="overlay" data-overlay="start">
-      <div className="panel">
-        <div className="panel__eyebrow">Original link-match challenge</div>
-        <h1 aria-label="Pikachu Duel"><span>Pikachu</span><em>Duel</em></h1>
-        <p className="panel__lede">
-          Race across the same Pokémon grid. Link identical characters with no more than two turns and clear all 72 pairs first.
-        </p>
+  const displayPlayers = players.length > 0 ? players : defaultPlayers;
 
-        <div className="modes" role="tablist" aria-label="How you want to play">
-          <button className="mode" type="button" role="tab" data-mode-btn="solo" aria-selected="false">
-            Solo<small>One player against the clock</small>
-          </button>
-          <button className="mode" type="button" role="tab" data-mode-btn="local" aria-selected="true">
-            Same computer<small>Two players, one keyboard</small>
-          </button>
-          <button className="mode" type="button" role="tab" data-mode-btn="online" aria-selected="false">
-            Online<small>Share a room link</small>
-          </button>
-        </div>
+  const presetsMap = PRESETS as Record<string, typeof PRESETS.normal>;
+  const diffPreset = presetsMap[duel?.setup.difficulty ?? 'normal'] ?? PRESETS.normal;
+  const diffLabel = diffPreset.difficultyLabel ?? diffPreset.label;
 
-        <form data-online-form hidden>
-          <div className="setup">
-            <label className="field" htmlFor="online-name">Your name
-              <input id="online-name" name="name" type="text" maxLength={18} placeholder="Player One" autoComplete="off" />
-            </label>
-            <label className="field" htmlFor="online-room">Room code <small>(blank creates one)</small>
-              <input id="online-room" name="room" type="text" maxLength={12} placeholder="e.g. K7M2QB" autoComplete="off" autoCapitalize="characters" spellCheck={false} />
-            </label>
-          </div>
-          <div className="panel__actions">
-            <button className="btn btn--primary" type="submit">Create or join room</button>
-            <span className="tools__keys">Both players receive the exact same deal.</span>
-          </div>
-          <p className="note" data-online-note hidden />
-        </form>
-
-        <form data-start-form>
-          <div className="setup">
-            <label className="field" data-field-p1>
-              <span data-p1-label>Player 1 name</span>
-              <input name="p1" type="text" maxLength={18} placeholder="Player One" autoComplete="off" />
-            </label>
-            <label className="field" data-field-p2>
-              <span>Player 2 name</span>
-              <input name="p2" type="text" maxLength={18} placeholder="Player Two" autoComplete="off" />
-            </label>
-            <label className="field">Board / Difficulty
-              <select name="difficulty" defaultValue="normal">
-                <option value="easy">Easy — Quick · 8 × 10 · 16 Pokémon</option>
-                <option value="normal">Medium — Classic · 9 × 16 · 24 Pokémon</option>
-                <option value="hard">Hard — Grand · 12 × 16 · 24 Pokémon</option>
-              </select>
-            </label>
-            <label className="field">Clock
-              <select name="clock" defaultValue="300">
-                <option value="180">3 minutes</option>
-                <option value="300">5 minutes</option>
-                <option value="480">8 minutes</option>
-                <option value="0">No clock</option>
-              </select>
-            </label>
-          </div>
-
-          <div className="rules-brief">
-            <div><span>01</span><p>Match two identical Pokémon.</p></div>
-            <div><span>02</span><p>Connect through empty space with ≤ 2 turns.</p></div>
-            <div><span>03</span><p data-rules-goal>Clear the mirrored grid before your rival.</p></div>
-          </div>
-
-          <div className="panel__actions">
-            <button className="btn btn--primary" type="submit" data-start-submit>Start duel</button>
-            <span className="tools__keys">Default arena: 16 columns × 9 rows.</span>
-          </div>
-        </form>
-      </div>
-    </div>
+  const next = calculateNextLevel(
+    duel?.setup.difficulty ?? 'normal',
+    duel?.level ?? 1,
+    duel?.setup.clock ?? 300,
   );
-}
+  const nextPreset = presetsMap[next.difficulty] ?? PRESETS.hard;
+  const nextDiffText =
+    next.difficulty === 'hard' && duel?.setup.difficulty === 'hard'
+      ? `Hard (${next.clock}s)`
+      : (nextPreset.difficultyLabel ?? nextPreset.label);
+  const nextLevelText = `Next level: Level ${next.level} (${nextDiffText})`;
 
-function LobbyOverlay() {
-  return (
-    <div className="overlay" data-overlay="lobby" hidden>
-      <div className="panel">
-        <div className="panel__eyebrow">Online room</div>
-        <h1>Room <em data-lobby-code>······</em></h1>
-        <p className="panel__lede" data-lobby-status>Connecting to the relay…</p>
-        <div className="invite">
-          <input type="text" readOnly data-invite-link aria-label="Invite link to share" />
-          <button className="btn" type="button" data-action="copy-invite">Copy link</button>
-        </div>
-        <ol className="seats" data-lobby-seats />
-        <div className="setup" data-lobby-settings hidden>
-          <label className="field" htmlFor="lobby-difficulty">Board / Difficulty
-            <select id="lobby-difficulty" data-lobby-difficulty defaultValue="normal">
-              <option value="easy">Easy — Quick · 8 × 10 · 16 Pokémon</option>
-              <option value="normal">Medium — Classic · 9 × 16 · 24 Pokémon</option>
-              <option value="hard">Hard — Grand · 12 × 16 · 24 Pokémon</option>
-            </select>
-          </label>
-          <label className="field" htmlFor="lobby-clock">Clock
-            <select id="lobby-clock" data-lobby-clock defaultValue="300">
-              <option value="180">3 minutes</option>
-              <option value="300">5 minutes</option>
-              <option value="480">8 minutes</option>
-              <option value="0">No clock</option>
-            </select>
-          </label>
-        </div>
-        <div className="panel__actions">
-          <button className="btn btn--primary" type="button" data-action="host-start" disabled>Start duel</button>
-          <button className="btn" type="button" data-action="leave-room">Leave room</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function DuelView({ rootRef }: DuelViewProps) {
   return (
     <div className="shell" data-app ref={rootRef}>
-      <header className="hud">
-        <div className="brand">
-          <span className="brand__mark" aria-hidden="true">P</span>
-          <span>Pikachu <em>Duel</em></span>
-          <span className="level-badge" data-level>Level 1 · Medium</span>
-          <span className="seed" data-seed>#—</span>
-        </div>
-        <output className="clock" data-clock aria-label="Match clock">05:00</output>
-        <div className="hud__actions">
-          <button className="btn" type="button" data-action="rematch" disabled>Rematch</button>
-          <button className="btn" type="button" data-action="new">New duel</button>
-          <button className="btn" type="button" data-action="sound" aria-pressed="true">Sound on</button>
-          <span className="link-state" data-link-state hidden />
-        </div>
-      </header>
+      <Hud
+        level={duel?.level ?? 1}
+        difficultyLabel={diffLabel}
+        seed={duel?.seed ?? 0}
+        timeLeft={timeLeft}
+        isUrgent={isUrgent}
+        canRematch={Boolean(duel)}
+        isMuted={soundMuted}
+        linkState={online.link ? online.status : undefined}
+        onRematch={() => requestRematch(true)}
+        onNewDuel={openNewDuel}
+        onToggleSound={toggleSound}
+      />
 
-      <main className="arena" data-arena>
-        <PlayerCabinet player={1} />
-        <PlayerCabinet player={2} />
-      </main>
+      <Arena
+        mode={effectiveMode}
+        players={displayPlayers}
+        onPick={handlePick}
+        onHint={triggerPlayerHint}
+        onShuffle={triggerPlayerShuffle}
+      />
 
-      <StartOverlay />
-      <LobbyOverlay />
+      <StartOverlay
+        isOpen={isStartOpen}
+        activeMode={activeTabMode}
+        initialP1={duel?.setup.names[0]}
+        initialP2={duel?.setup.names[1]}
+        initialDifficulty={duel?.setup.difficulty}
+        initialClock={duel?.setup.clock}
+        onlineNote={online.note}
+        onChangeMode={setActiveTabMode}
+        onStartGame={startDuel}
+        onJoinOnline={() => {}}
+      />
 
-      <div className="overlay" data-overlay="result" hidden>
-        <div className="panel panel--result">
-          <p className="result__banner" data-result-banner />
-          <div className="scoreboard" data-scoreboard />
-          <div className="panel__actions">
-            <button className="btn btn--primary" type="button" data-action="next-level">Next level</button>
-            <button className="btn" type="button" data-action="play-again">Same board again</button>
-            <button className="btn" type="button" data-action="fresh-board">Fresh board</button>
-            <button className="btn" type="button" data-action="new">Change settings</button>
-          </div>
-        </div>
-      </div>
+      <LobbyOverlay
+        isOpen={isLobbyOpen}
+        roomCode={online.code}
+        statusText={online.note || 'Connecting to the relay…'}
+        inviteLink={online.link}
+        peers={online.players}
+        isHost={Boolean(online.you && online.you === online.hostId)}
+        settings={online.settings}
+        onCopyInvite={() => {}}
+        onChangeDifficulty={() => {}}
+        onChangeClock={() => {}}
+        onStartDuel={() => {}}
+        onLeaveRoom={openNewDuel}
+      />
 
-      <div className="toast" data-toast hidden />
+      <ResultOverlay
+        isOpen={isResultOpen}
+        mode={effectiveMode}
+        winner={duel?.winner ?? -1}
+        reason={duel?.reason ?? null}
+        players={displayPlayers}
+        nextLevelText={nextLevelText}
+        canAdvanceLevel={true}
+        onNextLevel={advanceNextLevel}
+        onPlayAgain={() => requestRematch(true)}
+        onFreshBoard={() => requestRematch(false)}
+        onChangeSettings={openNewDuel}
+      />
+
+      <Toast message={toastMessage} />
     </div>
   );
 }

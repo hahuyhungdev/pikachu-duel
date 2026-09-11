@@ -1,11 +1,11 @@
 /** Tiny synth for feedback blips — no audio assets, no autoplay until a click. */
 
-let ctx = null;
+let ctx: AudioContext | null = null;
 let muted = false;
 
-function context() {
+function context(): AudioContext | null {
   if (!ctx) {
-    const Ctor = globalThis.AudioContext || globalThis.webkitAudioContext;
+    const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!Ctor) return null;
     ctx = new Ctor();
   }
@@ -13,7 +13,16 @@ function context() {
   return ctx;
 }
 
-function tone({ freq, to = freq, duration = 0.1, type = 'square', gain = 0.05, delay = 0 }) {
+interface ToneOptions {
+  freq: number;
+  to?: number;
+  duration?: number;
+  type?: OscillatorType;
+  gain?: number;
+  delay?: number;
+}
+
+function tone({ freq, to = freq, duration = 0.1, type = 'square', gain = 0.05, delay = 0 }: ToneOptions) {
   const audio = context();
   if (!audio || muted) return;
   const start = audio.currentTime + delay;
@@ -50,11 +59,11 @@ export const sfx = {
   tick: () => tone({ freq: 880, duration: 0.04, type: 'triangle', gain: 0.03 }),
 };
 
-export function setMuted(value) {
+export function setMuted(value: boolean): boolean {
   muted = Boolean(value);
   return muted;
 }
 
-export function isMuted() {
+export function isMuted(): boolean {
   return muted;
 }
