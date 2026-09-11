@@ -5,19 +5,43 @@
   "type": "module",
   "description": "Two-player Pikachu (Onet connect) tile-matching race",
   "scripts": {
-    "test": "node --test \"tests/**/*.test.js\"",
-    "test:watch": "node --test --watch \"tests/**/*.test.js\"",
-    "dev": "node scripts/serve.js",
-    "start": "node scripts/serve.js",
+    "test": "npm run test:core && npm run test:ui",
+    "test:core": "node --test \"tests/**/*.test.js\"",
+    "test:ui": "vitest run",
+    "test:watch": "vitest",
+    "dev": "vite --host 127.0.0.1",
+    "start": "vite --host 127.0.0.1",
+    "preview": "vite preview --host 127.0.0.1",
+    "build": "tsc -b && vite build",
+    "typecheck": "tsc -b --pretty false",
+    "lint": "eslint .",
     "server:dev": "wrangler dev --config server/wrangler.jsonc --port 8787 --ip 127.0.0.1",
     "server:deploy": "wrangler deploy --config server/wrangler.jsonc",
     "server:tail": "wrangler tail --config server/wrangler.jsonc",
     "smoke:relay": "node scripts/smoke-relay.mjs",
     "bot": "node scripts/bot-player.mjs",
-    "set-relay": "node scripts/set-relay.mjs",
-    "build:artifact": "node scripts/build-artifact.mjs"
+    "set-relay": "node scripts/set-relay.mjs"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "eslint": "^10.10.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.6",
+    "globals": "^17.12.0",
+    "jsdom": "^30.0.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.70.0",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.0",
     "wrangler": "^4.131.0"
+  },
+  "dependencies": {
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
   }
 }

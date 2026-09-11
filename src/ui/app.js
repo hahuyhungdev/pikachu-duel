@@ -9,18 +9,14 @@
 
 import { createSession, select, requestHint, requestShuffle, timeOut } from '../game/session.js';
 import { randomSeed } from '../game/rng.js';
-import { MAX_ICONS } from '../game/icons.js';
+import { PRESETS, calculateNextLevel, normalizeDifficulty } from '../shared/game/presets.js';
 import { createBoardView, CLEAR_MS } from './boardView.js';
 import { sfx, setMuted, isMuted } from './audio.js';
 import { createRelay } from '../net/client.js';
 import { isRelayConfigured, isRoomCode, newRoomCode } from '../net/config.js';
 import { createLobbyView } from './lobby.js';
 
-export const PRESETS = {
-  easy: { label: 'Easy', rows: 8, cols: 10, iconCount: 16, hints: 3, shuffles: 3 },
-  normal: { label: 'Normal', rows: 10, cols: 12, iconCount: 20, hints: 2, shuffles: 2 },
-  hard: { label: 'Hard', rows: 12, cols: 14, iconCount: MAX_ICONS, hints: 1, shuffles: 1 },
-};
+export { PRESETS };
 
 const CLOCKS = { 180: '3 min', 300: '5 min', 480: '8 min', 0: 'No clock' };
 const STORE_KEY = 'pikachu-duel/setup';
@@ -51,11 +47,13 @@ const pad = (n) => String(n).padStart(2, '0');
 const clockText = (seconds) => `${pad(Math.floor(Math.max(0, seconds) / 60))}:${pad(Math.max(0, seconds) % 60)}`;
 
 export function mountApp(root) {
+  const lifecycle = new AbortController();
   const el = (selector) => root.querySelector(selector);
   const dom = {
     arena: el('[data-arena]'),
     clock: el('[data-clock]'),
     seed: el('[data-seed]'),
+    levelBadge: el('[data-level]'),
     newDuel: [...root.querySelectorAll('[data-action="new"]')],
     rematch: el('[data-action="rematch"]'),
     sound: el('[data-action="sound"]'),
@@ -64,6 +62,7 @@ export function mountApp(root) {
     result: el('[data-overlay="result"]'),
     resultBanner: el('[data-result-banner]'),
     scoreboard: el('[data-scoreboard]'),
+    nextLevel: el('[data-action="next-level"]'),
     playAgain: el('[data-action="play-again"]'),
     freshBoard: el('[data-action="fresh-board"]'),
     toast: el('[data-toast]'),
@@ -114,16 +113,25 @@ export function mountApp(root) {
     toastId = setTimeout(() => { dom.toast.hidden = true; }, 2200);
   }
 
+  function updateLevelDisplay(level, difficulty) {
+    if (!dom.levelBadge) return;
+    const preset = PRESETS[difficulty] ?? PRESETS.normal;
+    const diffLabel = preset.difficultyLabel ?? (difficulty === 'easy' ? 'Easy' : difficulty === 'hard' ? 'Hard' : 'Medium');
+    dom.levelBadge.textContent = `Level ${level} · ${diffLabel}`;
+  }
+
   function readSetup() {
     const data = new FormData(dom.startForm);
-    const difficulty = String(data.get('difficulty') ?? 'normal');
+    const rawDifficulty = String(data.get('difficulty') ?? 'normal');
+    const difficulty = normalizeDifficulty(rawDifficulty);
     return {
       names: [
         String(data.get('p1') ?? '').trim().slice(0, 18) || 'Player One',
         String(data.get('p2') ?? '').trim().slice(0, 18) || 'Player Two',
       ],
-      difficulty: PRESETS[difficulty] ? difficulty : 'normal',
+      difficulty,
       clock: Number(data.get('clock') ?? 300),
+      level: 1,
     };
   }
 
@@ -424,8 +432,44 @@ export function mountApp(root) {
     }
 
     dom.result.hidden = false;
-    dom.playAgain.focus();
+    if (dom.nextLevel) {
+      const next = calculateNextLevel(duel.setup.difficulty, duel.level ?? 1, duel.setup.clock);
+      const nextPreset = PRESETS[next.difficulty] ?? PRESETS.hard;
+      const nextDiffText = next.difficulty === 'hard' && duel.setup.difficulty === 'hard'
+        ? `Hard (${next.clock}s)`
+        : (nextPreset.difficultyLabel ?? nextPreset.label);
+      dom.nextLevel.textContent = `Next level: Level ${next.level} (${nextDiffText})`;
+      dom.nextLevel.disabled = duel.mode === 'online' && !iAmHost();
+      dom.nextLevel.focus();
+    } else {
+      dom.playAgain.focus();
+    }
     sfx.win();
+  }
+
+  function advanceNextLevel() {
+    if (!duel) return;
+    const next = calculateNextLevel(duel.setup.difficulty, duel.level ?? 1, duel.setup.clock);
+    const nextSetup = {
+      ...duel.setup,
+      difficulty: next.difficulty,
+      clock: next.clock,
+      level: next.level,
+    };
+    if (duel.mode === 'online') {
+      if (!iAmHost()) {
+        toast('Only the host can advance to the next level');
+        return;
+      }
+      net.relay.send({
+        t: 'settings',
+        difficulty: next.difficulty,
+        clock: next.clock,
+      });
+      net.relay.send({ t: 'rematch', sameSeed: false });
+      return;
+    }
+    startDuel(nextSetup, randomSeed());
   }
 
   function startDuel(setup, seed = randomSeed()) {
@@ -433,7 +477,8 @@ export function mountApp(root) {
     leaveRelay();
     dom.arena.dataset.mode = 'local';
     dom.lobby.hidden = true;
-    duel = { mode: 'local', seed, setup, limit: setup.clock, elapsed: 0, over: false };
+    const level = setup.level ?? 1;
+    duel = { mode: 'local', seed, setup, limit: setup.clock, elapsed: 0, over: false, level };
     players = [0, 1].map((index) => buildPlayer(index, setup, seed));
     dom.seed.textContent = `#${seed.toString(36).toUpperCase()}`;
     dom.clock.textContent = clockText(setup.clock > 0 ? setup.clock : 0);
@@ -442,7 +487,10 @@ export function mountApp(root) {
     dom.result.hidden = true;
     dom.rematch.disabled = false;
     timerId = setInterval(tick, 1000);
-    toast(`${PRESETS[setup.difficulty].label} duel — same board for both players`);
+    updateLevelDisplay(level, setup.difficulty);
+    const diffInfo = PRESETS[setup.difficulty] ?? PRESETS.normal;
+    const diffName = diffInfo.difficultyLabel ?? 'Medium';
+    toast(`Level ${level} · ${diffName} (${diffInfo.label}) duel — same board for both players`);
   }
 
   dom.startForm.addEventListener('submit', (event) => {
@@ -465,6 +513,7 @@ export function mountApp(root) {
     });
   }
 
+  if (dom.nextLevel) dom.nextLevel.addEventListener('click', advanceNextLevel);
   dom.rematch.addEventListener('click', () => requestRematch(true));
   dom.playAgain.addEventListener('click', () => requestRematch(true));
   dom.freshBoard.addEventListener('click', () => requestRematch(false));
@@ -497,7 +546,7 @@ export function mountApp(root) {
       if (map.hint.includes(event.code)) { event.preventDefault(); useHint(player); return; }
       if (map.shuffle.includes(event.code)) { event.preventDefault(); useShuffle(player); return; }
     }
-  });
+  }, { signal: lifecycle.signal });
 
   /**
    * A duel can be handed over as a link:
@@ -509,11 +558,13 @@ export function mountApp(root) {
     if ([...params.keys()].length === 0) return null;
     const seedParam = params.get('seed');
     const parsedSeed = seedParam ? parseInt(seedParam, 36) : NaN;
+    const rawDiff = params.get('difficulty') ?? params.get('board');
+    const diff = rawDiff ? normalizeDifficulty(rawDiff) : null;
     return {
       room: params.get('room'),
       name: params.get('name'),
       names: [params.get('p1'), params.get('p2')],
-      difficulty: PRESETS[params.get('board')] ? params.get('board') : null,
+      difficulty: diff,
       clock: params.has('clock') ? Number(params.get('clock')) : null,
       seed: Number.isSafeInteger(parsedSeed) && parsedSeed > 0 ? parsedSeed : null,
       auto: params.get('auto') === '1' || Boolean(seedParam),
@@ -614,13 +665,15 @@ export function mountApp(root) {
     net.foeId = theirs?.id ?? null;
     net.status = 'playing';
 
+    const normalizedDiff = normalizeDifficulty(settings.difficulty);
     const setup = {
-      difficulty: PRESETS[settings.difficulty] ? settings.difficulty : 'normal',
+      difficulty: normalizedDiff,
       clock: Number(settings.clock) || 0,
       names: [mine?.name ?? net.name, theirs?.name ?? 'Opponent'],
+      level: PRESETS[normalizedDiff]?.level ?? 2,
     };
 
-    duel = { mode: 'online', seed, setup, limit: setup.clock, elapsed: 0, over: false, reported: false };
+    duel = { mode: 'online', seed, setup, limit: setup.clock, elapsed: 0, over: false, reported: false, level: setup.level };
     dom.arena.dataset.mode = 'online';
     players = [buildPlayer(0, setup, seed), buildRemotePlayer(1, setup, setup.names[1])];
 
@@ -632,6 +685,7 @@ export function mountApp(root) {
     dom.result.hidden = true;
     dom.rematch.disabled = !iAmHost();
     timerId = setInterval(tick, 1000);
+    updateLevelDisplay(setup.level, setup.difficulty);
     toast(`Duel on — same board as ${setup.names[1]}`);
   }
 
@@ -773,7 +827,7 @@ export function mountApp(root) {
     });
   }
 
-  window.addEventListener('beforeunload', () => net?.relay?.close());
+  window.addEventListener('beforeunload', () => net?.relay?.close(), { signal: lifecycle.signal });
 
 
   // ------------------------------------------------------------- start-up
@@ -810,5 +864,16 @@ export function mountApp(root) {
   if (query?.room && isRoomCode(String(query.room))) openInvite(query);
   else if (query) applyQuery(query);
 
-  return { startDuel, enterRoom, get duel() { return duel; } };
+  return {
+    startDuel,
+    enterRoom,
+    get duel() { return duel; },
+    destroy() {
+      lifecycle.abort();
+      clearInterval(timerId);
+      clearTimeout(toastId);
+      if (duel) duel.over = true;
+      leaveRelay();
+    },
+  };
 }

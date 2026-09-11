@@ -30,6 +30,7 @@ export function createBoardView({ mount, session, onPick }) {
   grid.style.setProperty('--cols', String(board.cols));
   grid.style.setProperty('--unit-w', String(unitW));
   grid.style.setProperty('--unit-h', String(unitH));
+  grid.style.setProperty('--board-min', `${unitW * 44}px`);
   grid.setAttribute('role', 'grid');
   grid.setAttribute('aria-label', `${session.label} board, ${board.rows} by ${board.cols}`);
 
@@ -50,7 +51,10 @@ export function createBoardView({ mount, session, onPick }) {
       tile.dataset.r = String(r);
       tile.dataset.c = String(c);
       tile.tabIndex = -1;
-      const face = document.createElement('span');
+      const face = document.createElement('img');
+      face.className = 'tile__sprite';
+      face.alt = '';
+      face.draggable = false;
       tile.append(face);
       tiles.set(key(r, c), tile);
       grid.append(tile);
@@ -91,14 +95,13 @@ export function createBoardView({ mount, session, onPick }) {
         tile.dataset.empty = 'true';
         tile.removeAttribute('data-selected');
         tile.removeAttribute('data-hint');
-        face.textContent = '';
+        face.removeAttribute('src');
         tile.setAttribute('aria-label', `row ${r} column ${c}, cleared`);
         continue;
       }
       const spec = iconFor(icon);
       delete tile.dataset.empty;
-      face.textContent = spec.glyph;
-      tile.style.setProperty('--tile-h', String(spec.h));
+      face.src = spec.src;
       tile.setAttribute('aria-label', `${spec.label}, row ${r} column ${c}`);
     }
     paintSelection();

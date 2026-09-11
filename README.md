@@ -1,10 +1,11 @@
 # ⚡ Pikachu Duel
 
-The classic **Pikachu / Onet "connect animal"** game, played by two people at once.
+The classic **Pikachu / Onet connect** game, played by two people at once.
 Both players get a byte-identical board, side by side, and the first to clear theirs
 wins.
 
-No build step, no dependencies — plain ES modules.
+The frontend runs on React 19, TypeScript, and Vite. The deterministic game engine
+and Cloudflare relay remain small framework-free ES modules.
 
 ## Play
 
@@ -13,16 +14,17 @@ Hosted on GitHub Pages: **https://hahuyhungdev.github.io/pikachu-duel/**
 Locally:
 
 ```bash
-npm start          # http://localhost:4173
+npm install
+npm start          # Vite dev server on http://localhost:4173
 ```
 
-There is no build step — GitHub Pages serves the repository root as-is. Every asset
-path in `index.html` is relative, so the site works from a sub-path. `.nojekyll`
-keeps Jekyll from touching the files.
+`npm run build` emits the production app to `dist/`. The Pages workflow in
+`.github/workflows/deploy.yml` tests and builds that artifact on every push to
+`main`.
 
 ## Rules
 
-Pick two matching animals. They clear if a path can join them that
+Pick two matching Pokémon. They clear if a path can join them that
 
 - runs only horizontally and vertically,
 - passes only through **empty space** — cleared tiles, or the gap around the outside
@@ -32,8 +34,8 @@ Pick two matching animals. They clear if a path can join them that
 Because a path may leave the board, any two tiles on the outer ring can always reach
 each other around the edge. Consecutive matches build a streak worth extra points.
 
-Every tile wears the same ivory face, as in the original — only the picture tells two
-tiles apart, so there are no colour shortcuts.
+Every tile wears the same cream face and warm outline, as in classic Pokémon Onet
+boards. The locally bundled pixel sprites are the only identity cue.
 
 If a board runs out of legal moves it is reshuffled automatically — nobody gets stuck.
 
@@ -77,7 +79,6 @@ room state and the two sockets, and nothing else — all the rules live in
 npx wrangler login                 # interactive, once
 npm run server:deploy              # prints https://pikachu-duel-room.<you>.workers.dev
 npm run set-relay https://pikachu-duel-room.<you>.workers.dev
-npm run build:artifact
 git commit -am "chore: point at the relay" && git push
 ```
 
@@ -113,7 +114,7 @@ be passed in the URL too, so the same deal can be handed to someone else:
 | Param     | Values                                     |
 | --------- | ------------------------------------------ |
 | `p1` `p2` | player names (18 chars max)                |
-| `board`   | `easy` 8×10 · `normal` 10×12 · `hard` 12×14 |
+| `board` / `difficulty` | `easy` 8×10 · `medium` / `normal` 9×16 (default) · `hard` 12×16 |
 | `clock`   | `180` · `300` · `480` · `0` (no clock)     |
 | `seed`    | base-36 seed — same seed, same board       |
 | `auto`    | `1` to skip the setup screen               |
@@ -121,25 +122,35 @@ be passed in the URL too, so the same deal can be handed to someone else:
 | `name`    | your name for an online room (skips the join screen) |
 | `server`  | override the relay URL                     |
 
-## Difficulty
+## Difficulty & Levels
 
-| Board    | Grid    | Animals | Hints | Shuffles |
-| -------- | ------- | ------- | ----- | -------- |
-| Easy     | 8 × 10  | 16      | 3     | 3        |
-| Normal   | 10 × 12 | 20      | 2     | 2        |
-| Hard     | 12 × 14 | 24      | 1     | 1        |
+You can set the starting difficulty from the setup screen, the online room lobby, or the URL (`?difficulty=medium` or `?board=medium`). **Medium (Classic 9 × 16)** is the default.
+
+| Level / Board | Difficulty | Grid    | Pokémon | Hints | Shuffles | Progression |
+| ------------- | ---------- | ------- | ------- | ----- | -------- | ----------- |
+| Level 1       | Easy (Quick) | 8 × 10  | 16      | 3     | 3        | Next level escalates to Medium |
+| Level 2 (Default) | Medium (Classic) | 9 × 16 | 24 | 2 | 2 | Next level escalates to Hard |
+| Level 3       | Hard (Grand) | 12 × 16 | 24      | 1     | 1        | Next level escalates clock (-60s) |
+| Level 4+      | Escalated  | 12 × 16 | 24      | 1     | 1        | Tighter countdown per round |
+
+When a round finishes, players can click **Next level** to immediately advance to the next level with increased board challenge and fresh seeds.
 
 ## Layout
 
 ```
-index.html              the page
+index.html              Vite document shell
+src/main.tsx            React entry point
+src/App.tsx             app shell and legacy controller adapter
+src/features/duel/      React feature, setup view, and migration boundary
+src/shared/game/        setup contracts shared by the feature and controller
 src/game/               pure, testable game logic (no DOM)
   rng.js                seeded PRNG — both players get the same deal
   grid.js               padded grid primitives
   connect.js            the ≤2-turn path rule, hints, reshuffling
   board.js              board generation (guaranteed to open with a legal move)
   session.js            one player's run: selection, scoring, hints, shuffles
-  icons.js              the 24-animal tile cast
+  icons.js              the 24 locally bundled Pokémon sprites
+src/assets/pokemon/     Generation III battle sprite files
 src/ui/                 DOM layer
   app.js                duel orchestration, clock, keyboard, overlays
   boardView.js          renders a board, draws the path trace
@@ -155,8 +166,6 @@ server/
   src/room.js           the room rules — pure, and covered by tests
   src/worker.js         routing and socket plumbing only
 tests/                  node:test suites for src/game and server/src/room.js
-scripts/serve.js        zero-dependency static server
-scripts/build-artifact.mjs  generates the hostable copy of index.html
 scripts/set-relay.mjs   writes the deployed relay URL into config.js
 scripts/smoke-relay.mjs end-to-end protocol check against a running Worker
 scripts/bot-player.mjs  a headless opponent, for testing online mode
@@ -165,7 +174,10 @@ scripts/bot-player.mjs  a headless opponent, for testing online mode
 ## Tests
 
 ```bash
-npm test              # node:test, 82 cases, no server needed
+npm test              # 82 engine/relay tests + React feature tests
+npm run typecheck     # strict TypeScript check
+npm run lint          # ESLint
+npm run build         # production Vite bundle
 npm run smoke:relay   # 13 more against a running Worker
 ```
 

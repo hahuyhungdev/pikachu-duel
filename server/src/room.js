@@ -8,7 +8,7 @@
  */
 
 export const MAX_PLAYERS = 2;
-export const DIFFICULTIES = ['easy', 'normal', 'hard'];
+export const DIFFICULTIES = ['easy', 'normal', 'medium', 'hard'];
 export const CLOCKS = [180, 300, 480, 0];
 const NAME_LIMIT = 18;
 
@@ -192,7 +192,9 @@ export function handle(state, event) {
     case 'settings': {
       if (from !== state.hostId) return { state, out: fail(from, 'not_host') };
       if (state.status === 'playing') return { state, out: fail(from, 'in_progress') };
-      if (DIFFICULTIES.includes(payload.difficulty)) state.settings.difficulty = payload.difficulty;
+      if (DIFFICULTIES.includes(payload.difficulty)) {
+        state.settings.difficulty = payload.difficulty === 'medium' ? 'normal' : payload.difficulty;
+      }
       if (CLOCKS.includes(Number(payload.clock))) state.settings.clock = Number(payload.clock);
       return { state, out: [{ to: 'all', msg: { t: 'settings', settings: { ...state.settings } } }] };
     }

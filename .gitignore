@@ -2,4 +2,7 @@ node_modules/
 dist/
 .wrangler/
 .playwright-mcp/
+.frontend-scan-screens/
+graphify-out/
 scratch/
+.frontend-scan-report.md

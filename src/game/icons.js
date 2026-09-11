@@ -1,37 +1,35 @@
 /**
- * Tile faces — the animal cast from the classic game. Icon ids are 1-based so 0
- * stays free as "empty".
- *
- * Every tile shares the same ivory face, exactly like the original: the picture
- * is the only thing that tells two tiles apart. Each face carries a barely-there
- * paper tint (chroma ~0.03) purely to help the eye scan a large board.
+ * Canonical Pokémon battle sprites from the classic handheld games.
+ * Icon ids stay 1-based so 0 remains the board's empty-cell sentinel.
  */
 
+const sprite = (name) => new URL(`../assets/pokemon/${name}.png`, import.meta.url).href;
+
 export const ICONS = [
-  { glyph: '🐦', label: 'bird', h: 235 },
-  { glyph: '🐤', label: 'chick', h: 92 },
-  { glyph: '🐧', label: 'penguin', h: 250 },
-  { glyph: '🦆', label: 'duck', h: 150 },
-  { glyph: '🦉', label: 'owl', h: 60 },
-  { glyph: '🦅', label: 'eagle', h: 40 },
-  { glyph: '🐺', label: 'wolf', h: 265 },
-  { glyph: '🦊', label: 'fox', h: 45 },
-  { glyph: '🐱', label: 'cat', h: 80 },
-  { glyph: '🐶', label: 'dog', h: 55 },
-  { glyph: '🐰', label: 'rabbit', h: 340 },
-  { glyph: '🐭', label: 'mouse', h: 220 },
-  { glyph: '🐹', label: 'hamster', h: 70 },
-  { glyph: '🐷', label: 'pig', h: 355 },
-  { glyph: '🐮', label: 'cow', h: 185 },
-  { glyph: '🐸', label: 'frog', h: 140 },
-  { glyph: '🐵', label: 'monkey', h: 50 },
-  { glyph: '🐴', label: 'horse', h: 30 },
-  { glyph: '🦁', label: 'lion', h: 88 },
-  { glyph: '🐯', label: 'tiger', h: 66 },
-  { glyph: '🐻', label: 'bear', h: 35 },
-  { glyph: '🐨', label: 'koala', h: 200 },
-  { glyph: '🐼', label: 'panda', h: 270 },
-  { glyph: '🐔', label: 'chicken', h: 25 },
+  { label: 'Pikachu', src: sprite('pikachu') },
+  { label: 'Bulbasaur', src: sprite('bulbasaur') },
+  { label: 'Charmander', src: sprite('charmander') },
+  { label: 'Squirtle', src: sprite('squirtle') },
+  { label: 'Raichu', src: sprite('raichu') },
+  { label: 'Nidorino', src: sprite('nidorino') },
+  { label: 'Nidoqueen', src: sprite('nidoqueen') },
+  { label: 'Arcanine', src: sprite('arcanine') },
+  { label: 'Machamp', src: sprite('machamp') },
+  { label: 'Meowth', src: sprite('meowth') },
+  { label: 'Psyduck', src: sprite('psyduck') },
+  { label: 'Snorlax', src: sprite('snorlax') },
+  { label: 'Gengar', src: sprite('gengar') },
+  { label: 'Haunter', src: sprite('haunter') },
+  { label: 'Lapras', src: sprite('lapras') },
+  { label: 'Gyarados', src: sprite('gyarados') },
+  { label: 'Aerodactyl', src: sprite('aerodactyl') },
+  { label: 'Mewtwo', src: sprite('mewtwo') },
+  { label: 'Dragonite', src: sprite('dragonite') },
+  { label: 'Vulpix', src: sprite('vulpix') },
+  { label: 'Growlithe', src: sprite('growlithe') },
+  { label: 'Cubone', src: sprite('cubone') },
+  { label: 'Scyther', src: sprite('scyther') },
+  { label: 'Magikarp', src: sprite('magikarp') },
 ];
 
 export const MAX_ICONS = ICONS.length;

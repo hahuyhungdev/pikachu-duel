@@ -6,24 +6,24 @@
   color-scheme: light;
 
   /* The desktop behind the game windows */
-  --desk: oklch(42% 0.055 197);
-  --desk-deep: oklch(33% 0.05 200);
+  --desk: oklch(17% 0.018 255);
+  --desk-deep: oklch(10% 0.012 255);
 
   /* Chrome — the window frames and controls */
-  --chrome: oklch(88% 0.022 85);
-  --chrome-raised: oklch(92% 0.02 85);
-  --chrome-hi: oklch(99% 0.012 85);
-  --chrome-lo: oklch(63% 0.03 78);
-  --chrome-edge: oklch(38% 0.028 72);
+  --chrome: oklch(91% 0.026 82);
+  --chrome-raised: oklch(95% 0.022 82);
+  --chrome-hi: oklch(98% 0.014 82);
+  --chrome-lo: oklch(67% 0.05 66);
+  --chrome-edge: oklch(31% 0.035 45);
 
   /* The playfield */
-  --felt: oklch(35% 0.055 158);
-  --felt-deep: oklch(29% 0.05 158);
+  --felt: oklch(11% 0.014 255);
+  --felt-deep: oklch(7% 0.01 255);
 
   /* Tiles */
-  --tile: oklch(94% 0.028 85);
-  --tile-hi: oklch(99% 0.014 85);
-  --tile-lo: oklch(77% 0.04 78);
+  --tile: oklch(95% 0.032 80);
+  --tile-hi: oklch(99% 0.014 82);
+  --tile-lo: oklch(59% 0.15 42);
 
   /* Ink */
   --ink: oklch(27% 0.02 60);
