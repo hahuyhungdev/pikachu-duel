@@ -8,9 +8,17 @@ No build step, no dependencies — plain ES modules.
 
 ## Play
 
+Hosted on GitHub Pages: **https://hahuyhungdev.github.io/pikachu-duel/**
+
+Locally:
+
 ```bash
 npm start          # http://localhost:4173
 ```
+
+There is no build step — GitHub Pages serves the repository root as-is. Every asset
+path in `index.html` is relative, so the site works from a sub-path. `.nojekyll`
+keeps Jekyll from touching the files.
 
 ## Rules
 
