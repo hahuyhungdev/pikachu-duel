@@ -13,7 +13,7 @@
 import { useState } from 'react';
 import { PRESETS } from '../../../../shared/game/presets.js';
 import { FEVER_MULTIPLIER, FEVER_STREAK } from '../../../../game/session.js';
-import { BOMB_PENALTY_SECONDS, GOLD_MULTIPLIER } from '../../../../game/marks.js';
+import { BOMB_PENALTY_SECONDS, CHRONO_FREEZE_SECONDS, CHRONO_SURGE_SECONDS, GOLD_MULTIPLIER } from '../../../../game/marks.js';
 import { GRAVITY_LABELS } from '../../../../game/gravity.js';
 import type { Difficulty, GameMode, ModeCard, ProfileSummary } from '../../types/solo.types';
 
@@ -155,6 +155,12 @@ export function ModePicker({
               Gold
             </dt>
             <dd className="mark-guide__detail">Scores {GOLD_MULTIPLIER}× — hunt it first.</dd>
+            <dt className="mark-guide__term" data-mark="chrono">
+              Chrono
+            </dt>
+            <dd className="mark-guide__detail">
+              Surges clock +{CHRONO_SURGE_SECONDS}s and freezes timer for {CHRONO_FREEZE_SECONDS}s.
+            </dd>
             <dt className="mark-guide__term" data-mark="ice">
               Ice
             </dt>

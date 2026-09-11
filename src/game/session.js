@@ -53,6 +53,7 @@ export function createSession({
   ice = 0,
   bomb = 0,
   bombFuse = 12,
+  chrono = 0,
   timeGain = null,
 } = {}) {
   const session = {
@@ -76,8 +77,8 @@ export function createSession({
     timeGain: { match: 0, fever: 0, ...(timeGain ?? {}) },
   };
 
-  if (gold > 0 || ice > 0 || bomb > 0) {
-    sprinkleMarks(session.board, { seed: deriveSeed(seed, 991), gold, ice, bomb, bombFuse });
+  if (gold > 0 || ice > 0 || bomb > 0 || chrono > 0) {
+    sprinkleMarks(session.board, { seed: deriveSeed(seed, 991), gold, ice, bomb, bombFuse, chrono });
   }
 
   return session;
@@ -157,7 +158,9 @@ export function select(session, r, c) {
   const exploded = tickBombs(session.board);
   const timeDelta =
     (session.fever ? session.timeGain.fever : session.timeGain.match) -
-    exploded.length * BOMB_PENALTY_SECONDS;
+    exploded.length * BOMB_PENALTY_SECONDS +
+    (marks.timeGain || 0);
+  const timeFreeze = marks.timeFreeze || 0;
 
   const won = session.board.remaining === 0;
   if (won) session.status = 'won';
@@ -181,6 +184,7 @@ export function select(session, r, c) {
     tier: session.tier,
     fever: session.fever,
     timeDelta,
+    timeFreeze,
     gained,
     won,
     autoShuffled,

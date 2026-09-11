@@ -45,6 +45,7 @@ export interface PickResult {
   tier?: number;
   fever?: boolean;
   timeDelta?: number;
+  timeFreeze?: number;
   gained?: number;
   won?: boolean;
   autoShuffled?: boolean;
@@ -71,6 +72,7 @@ export interface SessionOptions {
   shuffles: number;
   gravity: string;
   gold: number;
+  chrono?: number;
   ice: number;
   bomb: number;
   bombFuse: number;

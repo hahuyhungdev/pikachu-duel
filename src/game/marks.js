@@ -17,8 +17,12 @@ export const MARK_GOLD = 1;
 export const MARK_ICE = 2;
 /** Counts down one step per match; reaching zero costs clock time. */
 export const MARK_BOMB = 3;
+/** Grants clock surge and freezes timer for a few seconds. */
+export const MARK_CHRONO = 4;
 
 export const BOMB_PENALTY_SECONDS = 15;
+export const CHRONO_SURGE_SECONDS = 8;
+export const CHRONO_FREEZE_SECONDS = 5;
 
 /** Score multiplier applied when either half of a matched pair is gold. */
 export const GOLD_MULTIPLIER = 3;
@@ -74,23 +78,25 @@ export function listMarks(board) {
  * Counts are clamped to what the board can hold, and the choice is seeded so
  * every player dealt the same board also gets the same specials.
  */
-export function sprinkleMarks(board, { seed = 1, gold = 0, ice = 0, bomb = 0, bombFuse = 12 } = {}) {
+export function sprinkleMarks(board, { seed = 1, gold = 0, ice = 0, bomb = 0, bombFuse = 12, chrono = 0 } = {}) {
   const cells = listTiles(board).map(({ r, c }) => ({ r, c }));
   shuffleInPlace(cells, createRng(seed));
 
   const placed = { gold: 0, ice: 0, bomb: 0 };
+  if (chrono > 0) placed.chrono = 0;
   let i = 0;
   const take = (kind, mark, count, fuse = 0) => {
     for (let n = 0; n < count && i < cells.length; n += 1, i += 1) {
       const { r, c } = cells[i];
       setMark(board, r, c, mark);
       if (fuse) setFuse(board, r, c, fuse);
-      placed[kind] += 1;
+      if (kind in placed) placed[kind] += 1;
     }
   };
 
   take('bomb', MARK_BOMB, Math.max(0, Math.trunc(bomb)), Math.max(1, Math.trunc(bombFuse)));
   take('ice', MARK_ICE, Math.max(0, Math.trunc(ice)));
+  take('chrono', MARK_CHRONO, Math.max(0, Math.trunc(chrono)));
   take('gold', MARK_GOLD, Math.max(0, Math.trunc(gold)));
 
   return placed;
@@ -132,10 +138,14 @@ export function resolveMatchMarks(board, a, b) {
     }
   }
 
+  const hasChrono = marks.includes(MARK_CHRONO);
+
   return {
     cracked,
     /** The pair stays on the board while any ice is still cracking. */
     survives: cracked.length > 0,
     multiplier: marks.includes(MARK_GOLD) ? GOLD_MULTIPLIER : 1,
+    timeGain: hasChrono ? CHRONO_SURGE_SECONDS : 0,
+    timeFreeze: hasChrono ? CHRONO_FREEZE_SECONDS : 0,
   };
 }

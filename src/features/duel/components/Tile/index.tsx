@@ -2,7 +2,7 @@ import { memo, type CSSProperties } from 'react';
 import { iconFor } from '../../../../game/icons.js';
 
 /** The special-tile treatments a board can ask for. */
-export type TileMarkKind = 'gold' | 'ice' | 'bomb';
+export type TileMarkKind = 'gold' | 'ice' | 'bomb' | 'chrono';
 
 interface TileProps {
   r: number;
@@ -28,6 +28,7 @@ const FUSE_CRITICAL = 3;
 function markLabel(mark: TileMarkKind, fuse: number): string {
   if (mark === 'gold') return 'golden, triple score';
   if (mark === 'ice') return 'iced, needs two matches';
+  if (mark === 'chrono') return 'chrono, +8s surge and 5s freeze';
   return `bomb, ${fuse} ${fuse === 1 ? 'move' : 'moves'} left`;
 }
 
@@ -95,6 +96,7 @@ export const Tile = memo(function Tile({
     >
       <img className="tile__sprite" src={spec.src} alt="" draggable={false} />
       {mark === 'bomb' && <span className="tile__fuse" aria-hidden="true">{fuse}</span>}
+      {mark === 'chrono' && <span className="tile__chrono" aria-hidden="true">⏱</span>}
     </button>
   );
 });

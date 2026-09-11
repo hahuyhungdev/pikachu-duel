@@ -4,7 +4,7 @@ import type { BoardData, Floater, Point, TracePath, VeilInfo } from '../../types
 import { Tile, type TileMarkKind } from '../Tile';
 
 /** Mark ids as `src/game/marks.js` stores them, mapped to what the Tile renders. */
-const MARK_KINDS: Record<number, TileMarkKind> = { 1: 'gold', 2: 'ice', 3: 'bomb' };
+const MARK_KINDS: Record<number, TileMarkKind> = { 1: 'gold', 2: 'ice', 3: 'bomb', 4: 'chrono' };
 
 export interface BoardMark {
   r: number;

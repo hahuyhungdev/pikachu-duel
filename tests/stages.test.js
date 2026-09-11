@@ -53,11 +53,13 @@ test('the opening stages teach the plain game before any twist', () => {
 test('each twist is introduced once and then stays available', () => {
   const firstWith = (key) => STAGES.find((s) => stageConfig(s)[key] > 0);
   const goldAt = firstWith('gold');
+  const chronoAt = firstWith('chrono');
   const iceAt = firstWith('ice');
   const bombAt = firstWith('bomb');
   const gravityAt = STAGES.find((s) => stageConfig(s).gravity !== 'none');
 
-  assert.ok(goldAt < iceAt, 'gold (pure upside) must arrive before ice');
+  assert.ok(goldAt < chronoAt, 'gold must arrive before chrono');
+  assert.ok(chronoAt < iceAt, 'chrono must arrive before ice');
   assert.ok(iceAt < bombAt, 'ice must arrive before the punishing bomb');
   assert.ok(gravityAt > FIRST_STAGE, 'gravity must not be live on the very first stage');
   assert.ok(bombAt <= 12, `the bomb arrives too late to matter (stage ${bombAt})`);
@@ -89,7 +91,7 @@ test('gravity cycles through the variants rather than repeating one forever', ()
 test('specials are always placeable on the board they belong to', () => {
   for (const stage of STAGES) {
     const config = stageConfig(stage);
-    const total = config.gold + config.ice + config.bomb;
+    const total = config.gold + (config.chrono || 0) + config.ice + config.bomb;
     assert.ok(total <= config.rows * config.cols, `stage ${stage} asks for more marks than cells`);
     if (config.bomb > 0) assert.ok(config.bombFuse > 0, `stage ${stage} has a bomb with no fuse`);
   }

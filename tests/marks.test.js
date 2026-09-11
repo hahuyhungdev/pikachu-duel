@@ -6,7 +6,10 @@ import {
   MARK_GOLD,
   MARK_ICE,
   MARK_BOMB,
+  MARK_CHRONO,
   GOLD_MULTIPLIER,
+  CHRONO_SURGE_SECONDS,
+  CHRONO_FREEZE_SECONDS,
   getMark,
   setMark,
   getFuse,
@@ -184,3 +187,24 @@ test('marks survive a board that has been dealt for real', () => {
     assert.ok(tiles.has(`${mark.r},${mark.c}`), 'a mark landed on an empty cell');
   }
 });
+
+test('a chrono tile on either side of the pair yields time surge and freeze', () => {
+  for (const c of [1, 2]) {
+    const board = boardFromGrid([[1, 1]]);
+    setMark(board, 1, c, MARK_CHRONO);
+    const result = resolveMatchMarks(board, { r: 1, c: 1 }, { r: 1, c: 2 });
+    assert.equal(result.timeGain, CHRONO_SURGE_SECONDS);
+    assert.equal(result.timeFreeze, CHRONO_FREEZE_SECONDS);
+    assert.equal(result.survives, false, 'chrono clears cleanly');
+  }
+});
+
+test('sprinkleMarks places chrono marks when requested', () => {
+  const board = createBoard({ rows: 6, cols: 6, iconCount: 8, seed: 77 });
+  const placed = sprinkleMarks(board, { seed: 10, chrono: 3, gold: 2 });
+  assert.equal(placed.chrono, 3);
+  assert.equal(placed.gold, 2);
+  const chronos = listMarks(board).filter((m) => m.mark === MARK_CHRONO);
+  assert.equal(chronos.length, 3);
+});
+

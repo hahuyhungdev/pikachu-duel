@@ -17,6 +17,7 @@ export const FIRST_STAGE = 1;
 export const INTRODUCES = {
   gravity: 4,
   gold: 3,
+  chrono: 5,
   ice: 6,
   bomb: 9,
 };
@@ -80,6 +81,7 @@ export function stageConfig(stage) {
       : GRAVITY_ROTATION[Math.floor((n - INTRODUCES.gravity) / 2) % GRAVITY_ROTATION.length];
 
   const gold = countFor(n, INTRODUCES.gold, 3, 6);
+  const chrono = countFor(n, INTRODUCES.chrono, 4, 3);
   const ice = countFor(n, INTRODUCES.ice, 4, 6);
   const bomb = countFor(n, INTRODUCES.bomb, 5, 3);
 
@@ -104,6 +106,7 @@ export function stageConfig(stage) {
     shuffles,
     gravity,
     gold,
+    chrono,
     ice,
     bomb,
     bombFuse: bomb > 0 ? Math.max(6, 16 - n) : 0,
@@ -113,10 +116,11 @@ export function stageConfig(stage) {
 
 /** The score the player is chasing on this stage, phrased for the HUD. */
 export function stageObjective(stage) {
-  const { stars } = stageConfig(stage);
+  const { stars, pairs } = stageConfig(stage);
   return {
     target: stars.gold,
     text: `Clear the board — ${stars.gold.toLocaleString('en-US')} pts for three stars`,
+    pairs,
   };
 }
 
@@ -136,6 +140,7 @@ export function describeStage(stage) {
 
   if (config.gravity !== 'none') notes.push(GRAVITY_LABELS[config.gravity]);
   if (config.gold > 0) notes.push(`${config.gold} gold`);
+  if (config.chrono > 0) notes.push(`${config.chrono} chrono`);
   if (config.ice > 0) notes.push(`${config.ice} iced`);
   if (config.bomb > 0) notes.push(`${config.bomb} bomb${config.bomb > 1 ? 's' : ''}`);
 

@@ -57,6 +57,7 @@ export interface Round {
   shuffles: number;
   gravity: string;
   gold: number;
+  chrono: number;
   ice: number;
   bomb: number;
   bombFuse: number;
@@ -90,6 +91,10 @@ export interface RunSummary {
   records: RunRecords;
   previousBest: RunBests;
   newUnlocks: Unlock[];
+  timeBonus?: number;
+  timeLeft?: number;
+  recoveredHeart?: boolean;
+  recoveredAids?: boolean;
 }
 
 /** One entry in the mode menu. */
@@ -122,6 +127,10 @@ export interface SoloHud {
   timeLeft: number;
   isUrgent: boolean;
   isCritical: boolean;
+  isOvertime?: boolean;
+  overtimeLeft?: number;
+  isFrozen?: boolean;
+  freezeLeft?: number;
   hearts: number;
   heartsLeft: number;
   score: number;

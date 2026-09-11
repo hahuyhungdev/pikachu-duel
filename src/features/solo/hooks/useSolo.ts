@@ -104,6 +104,7 @@ function comboProgress(streak: number, tier: number): number {
 function freshTwists(stage: number): string[] {
   const fresh: string[] = [];
   if (stage === INTRODUCES.gold) fresh.push('Gold tiles — a pair worth triple score');
+  if (stage === INTRODUCES.chrono) fresh.push('Chrono tiles — +8s time surge and 5-second clock freeze');
   if (stage === INTRODUCES.ice) fresh.push('Iced tiles — match them twice to clear them');
   if (stage === INTRODUCES.bomb) fresh.push('Bombs — they count down every match and cost you 15 seconds');
   if (stage === INTRODUCES.gravity) fresh.push('Gravity — the board collapses into every gap you make');
@@ -124,6 +125,10 @@ export function useSolo() {
 
   const [heartsLeft, setHeartsLeft] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
+  const [freezeLeft, setFreezeLeft] = useState(0);
+  const [overtimeLeft, setOvertimeLeft] = useState(0);
+  const [overtimeUsed, setOvertimeUsed] = useState(false);
+  const [bonusAids, setBonusAids] = useState<{ hints: number; shuffles: number }>({ hints: 0, shuffles: 0 });
   const [runScore, setRunScore] = useState(0);
   const [runPairs, setRunPairs] = useState(0);
   const [runBestStreak, setRunBestStreak] = useState(0);
@@ -140,6 +145,23 @@ export function useSolo() {
 
   const timers = useRef<number[]>([]);
   const toastTimer = useRef<number | undefined>(undefined);
+  const freezeLeftRef = useRef(0);
+  const overtimeLeftRef = useRef(0);
+  const overtimeUsedRef = useRef(false);
+  const timeLeftRef = useRef(0);
+
+  useEffect(() => {
+    freezeLeftRef.current = freezeLeft;
+  }, [freezeLeft]);
+  useEffect(() => {
+    overtimeLeftRef.current = overtimeLeft;
+  }, [overtimeLeft]);
+  useEffect(() => {
+    overtimeUsedRef.current = overtimeUsed;
+  }, [overtimeUsed]);
+  useEffect(() => {
+    timeLeftRef.current = timeLeft;
+  }, [timeLeft]);
 
   /** Every deferred visual reset funnels through here so nothing fires after a reset. */
   const later = useCallback((fn: () => void, ms: number) => {
@@ -178,10 +200,11 @@ export function useSolo() {
         cols: next.cols,
         iconCount: next.iconCount,
         seed: next.seed,
-        hints: next.hints,
-        shuffles: next.shuffles,
+        hints: next.hints + bonusAids.hints,
+        shuffles: next.shuffles + bonusAids.shuffles,
         gravity: next.gravity,
         gold: next.gold,
+        chrono: next.chrono,
         ice: next.ice,
         bomb: next.bomb,
         bombFuse: next.bombFuse,
@@ -189,9 +212,19 @@ export function useSolo() {
         label: next.label,
       });
 
+      freezeLeftRef.current = 0;
+      setFreezeLeft(0);
+      overtimeLeftRef.current = 0;
+      setOvertimeLeft(0);
+      overtimeUsedRef.current = false;
+      setOvertimeUsed(false);
+
+      const nextClock = options.keepClock ?? next.clock;
+      timeLeftRef.current = nextClock;
+      setTimeLeft(nextClock);
+
       setRound(next);
       setSession(dealt);
-      setTimeLeft(options.keepClock ?? next.clock);
       setClearingTiles([]);
       setShakingTiles([]);
       setCrackingTiles([]);
@@ -205,12 +238,13 @@ export function useSolo() {
       setIntroOpen(nextMode === 'adventure');
       return next;
     },
-    [clearTimers, difficulty],
+    [bonusAids.hints, bonusAids.shuffles, clearTimers, difficulty],
   );
 
   const startRun = useCallback(() => {
     const startRules = modeRules(mode);
     setHeartsLeft(startRules.hearts);
+    setBonusAids({ hints: 0, shuffles: 0 });
     setRunScore(0);
     setRunPairs(0);
     setRunBestStreak(0);
@@ -227,23 +261,46 @@ export function useSolo() {
       if (!round || !session) return;
 
       const stageScore = session.score;
-      const totalScore = runScore + stageScore;
+      const cleared = outcome === 'cleared';
+      const timeBonus = cleared && round.timed ? Math.max(0, timeLeft * 50) : 0;
+      const totalScore = runScore + stageScore + timeBonus;
       const totalPairs = runPairs + session.matchedPairs;
       const bestStreak = Math.max(runBestStreak, session.bestStreak);
-      const cleared = outcome === 'cleared';
-      const stars = rules.ladder ? stageStars(round.stage, { cleared, score: stageScore }) : 0;
+      const stars = rules.ladder ? stageStars(round.stage, { cleared, score: stageScore + timeBonus }) : 0;
 
       setRunScore(totalScore);
       setRunPairs(totalPairs);
       setRunBestStreak(bestStreak);
 
-      const livesAfter = cleared ? heartsLeft : Math.max(0, heartsLeft - 1);
-      if (!cleared) setHeartsLeft(livesAfter);
+      let livesAfter = cleared ? heartsLeft : Math.max(0, heartsLeft - 1);
+      let recoveredHeart = false;
+      let recoveredAids = false;
+
+      if (cleared && round.timed) {
+        if (timeLeft >= 45 && heartsLeft < round.hearts) {
+          livesAfter += 1;
+          recoveredHeart = true;
+          setHeartsLeft(livesAfter);
+          showToast('❤️ SPEED MILESTONE! +1 Life restored!');
+        }
+        if (timeLeft >= 30) {
+          recoveredAids = true;
+          setBonusAids((b) => ({ hints: b.hints + 1, shuffles: b.shuffles + 1 }));
+          setSession((s) => (s ? { ...s, hintsLeft: s.hintsLeft + 1, shufflesLeft: s.shufflesLeft + 1 } : s));
+          showToast('✨ SPEED MILESTONE! +1 Hint & Shuffle awarded!');
+        }
+      } else if (!cleared) {
+        setHeartsLeft(livesAfter);
+      }
 
       // Time Attack rolls straight into the next stage while the clock still
       // has seconds on it — stopping to read a panel is what kills the mode.
       if (cleared && round.mode === 'timeattack') {
-        showToast(`Stage ${round.stage} cleared · +${stageScore.toLocaleString('en-US')}`);
+        showToast(
+          `Stage ${round.stage} cleared · +${stageScore.toLocaleString('en-US')}${
+            timeBonus > 0 ? ` (+${timeBonus.toLocaleString('en-US')} speed)` : ''
+          }`,
+        );
         dealStage(round.mode, round.stage + 1, { keepClock: timeLeft });
         return;
       }
@@ -270,6 +327,10 @@ export function useSolo() {
         stars,
         runScore: totalScore,
         stageScore,
+        timeBonus,
+        timeLeft,
+        recoveredHeart,
+        recoveredAids,
         pairs: totalPairs,
         bestStreak,
         heartsLeft: livesAfter,
@@ -289,24 +350,78 @@ export function useSolo() {
     if (phase !== 'playing' || introOpen || !round?.timed) return undefined;
 
     const id = window.setInterval(() => {
-      setTimeLeft((left) => {
-        const next = left - 1;
+      // 1. Frozen clock:
+      if (freezeLeftRef.current > 0) {
+        const nextFreeze = freezeLeftRef.current - 1;
+        freezeLeftRef.current = nextFreeze;
+        setFreezeLeft(nextFreeze);
+        return;
+      }
+
+      // 2. Active regular countdown:
+      if (timeLeftRef.current > 0) {
+        const next = timeLeftRef.current - 1;
+        timeLeftRef.current = next;
+        setTimeLeft(next);
+
         if (next <= CRITICAL_AT && next > 0) sfx.tick();
-        return next > 0 ? next : 0;
-      });
+
+        if (next === 0) {
+          if (!overtimeUsedRef.current) {
+            overtimeUsedRef.current = true;
+            setOvertimeUsed(true);
+            overtimeLeftRef.current = 3;
+            setOvertimeLeft(3);
+            sfx.reject();
+            showToast('⚡ OVERTIME! 3s to match or game over!');
+          } else {
+            if (session) expire(session);
+            endStage('failed');
+          }
+        }
+        return;
+      }
+
+      // 3. Overtime countdown:
+      if (overtimeLeftRef.current > 0) {
+        const nextOt = overtimeLeftRef.current - 1;
+        overtimeLeftRef.current = nextOt;
+        setOvertimeLeft(nextOt);
+        if (nextOt > 0) {
+          sfx.tick();
+        } else {
+          if (session) expire(session);
+          endStage('failed');
+        }
+        return;
+      }
+
+      // 4. Time completely out:
+      if (session) expire(session);
+      endStage('failed');
     }, 1000);
 
     return () => window.clearInterval(id);
-  }, [introOpen, phase, round?.timed]);
+  }, [endStage, introOpen, phase, round?.timed, session, showToast]);
 
   useEffect(() => {
-    if (phase !== 'playing' || introOpen || !round?.timed || timeLeft > 0 || !session) return undefined;
+    if (
+      phase !== 'playing' ||
+      introOpen ||
+      !round?.timed ||
+      timeLeft > 0 ||
+      overtimeLeft > 0 ||
+      !overtimeUsed ||
+      !session
+    ) {
+      return undefined;
+    }
     expire(session);
     // Deferred by a tick so the stage teardown is its own render, not a
     // cascading setState inside this effect's body.
     const id = window.setTimeout(() => endStage('failed'), 0);
     return () => window.clearTimeout(id);
-  }, [endStage, introOpen, phase, round?.timed, session, timeLeft]);
+  }, [endStage, introOpen, overtimeLeft, overtimeUsed, phase, round?.timed, session, timeLeft]);
 
   const pick = useCallback(
     (r: number, c: number) => {
@@ -370,8 +485,39 @@ export function useSolo() {
         later(() => setSlides([]), SLIDE_MS);
       }
 
+      if (cracked.length > 0 || cleared.length > 0) {
+        if (overtimeLeftRef.current > 0) {
+          overtimeLeftRef.current = 0;
+          setOvertimeLeft(0);
+          const clutchRevival = 6;
+          timeLeftRef.current = clutchRevival;
+          setTimeLeft(clutchRevival);
+          showToast('🔥 CLUTCH COMEBACK! +6s restored!');
+          sfx.win();
+        }
+      }
+
+      if (result.timeFreeze && result.timeFreeze > 0) {
+        const nextFreeze = (freezeLeftRef.current || 0) + result.timeFreeze;
+        freezeLeftRef.current = nextFreeze;
+        setFreezeLeft(nextFreeze);
+        showToast(`⏱ CHRONO SURGE! +8s & ${result.timeFreeze}s Freeze!`);
+      }
+
       if (timeDelta !== 0) {
-        setTimeLeft((left) => Math.max(0, left + timeDelta));
+        setTimeLeft((left) => {
+          const next = Math.max(0, left + timeDelta);
+          timeLeftRef.current = next;
+          if (next === 0 && left > 0 && !overtimeUsedRef.current) {
+            overtimeUsedRef.current = true;
+            setOvertimeUsed(true);
+            overtimeLeftRef.current = 3;
+            setOvertimeLeft(3);
+            sfx.reject();
+            showToast('⚡ OVERTIME! 3s to match or game over!');
+          }
+          return next;
+        });
       }
       if (exploded.length > 0) {
         showToast(`Bomb went off — ${exploded.length * 15}s gone`);
@@ -469,8 +615,12 @@ export function useSolo() {
       objective: rules.ladder ? stageObjective(round.stage).text : null,
       timed: round.timed,
       timeLeft,
-      isUrgent: round.timed && timeLeft <= URGENT_AT,
-      isCritical: round.timed && timeLeft <= CRITICAL_AT,
+      isUrgent: round.timed && timeLeft <= URGENT_AT && overtimeLeft === 0,
+      isCritical: round.timed && (timeLeft <= CRITICAL_AT || overtimeLeft > 0),
+      isOvertime: overtimeLeft > 0,
+      overtimeLeft,
+      isFrozen: freezeLeft > 0,
+      freezeLeft,
       hearts: round.hearts,
       heartsLeft,
       score: session.score,
@@ -485,7 +635,7 @@ export function useSolo() {
       totalPairs: round.pairs,
       bestScore: profile.modes[round.mode].bestScore,
     };
-  }, [heartsLeft, profile, round, rules.ladder, runScore, session, timeLeft]);
+  }, [freezeLeft, heartsLeft, overtimeLeft, profile, round, rules.ladder, runScore, session, timeLeft]);
 
   const board = useMemo<SoloBoardView | null>(() => {
     if (!session) return null;

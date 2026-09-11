@@ -82,9 +82,21 @@ export function RunHud({
             data-clock
             data-urgent={hud.isUrgent ? 'true' : 'false'}
             data-critical={hud.isCritical ? 'true' : 'false'}
-            aria-label="Time left"
+            data-frozen={hud.isFrozen ? 'true' : undefined}
+            data-overtime={hud.isOvertime ? 'true' : undefined}
+            aria-label={
+              hud.isOvertime
+                ? `Overtime: ${hud.overtimeLeft} seconds left`
+                : hud.isFrozen
+                ? `Time frozen: ${hud.freezeLeft}s, ${clockText(hud.timeLeft)} left`
+                : 'Time left'
+            }
           >
-            {clockText(hud.timeLeft)}
+            {hud.isOvertime
+              ? `⚡ 00:0${hud.overtimeLeft ?? 0}`
+              : hud.isFrozen
+              ? `❄ ${clockText(hud.timeLeft)}`
+              : clockText(hud.timeLeft)}
           </output>
         ) : null}
       </div>

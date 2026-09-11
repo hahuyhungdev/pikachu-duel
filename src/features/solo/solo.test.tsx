@@ -2,6 +2,9 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { SoloGame } from './index';
+import { RunResult } from './components/RunResult';
+import { RunHud } from './components/RunHud';
+import type { RunSummary, SoloHud } from './types/solo.types';
 import { STORAGE_KEY } from '../../shared/game/profile';
 
 function openSolo() {
@@ -45,7 +48,7 @@ describe('the solo run', () => {
     const { container } = openSolo();
     const guide = container.querySelector('.mark-guide');
     expect(guide).not.toBeNull();
-    for (const mark of ['gold', 'ice', 'bomb']) {
+    for (const mark of ['gold', 'chrono', 'ice', 'bomb']) {
       expect(guide!.querySelector(`[data-mark="${mark}"]`)).not.toBeNull();
     }
   });
@@ -171,5 +174,109 @@ describe('the solo run', () => {
     const { container } = render(<SoloGame onOpenDuel={() => calls.push(1)} />);
     fireEvent.click(container.querySelector<HTMLButtonElement>('[data-action="open-duel"]')!);
     expect(calls).toHaveLength(1);
+  });
+
+  it('renders time reward strip with speed bonus and recovered heart/aids on clear', () => {
+    const summary: RunSummary = {
+      mode: 'adventure',
+      modeLabel: 'Adventure',
+      stage: 5,
+      stars: 3,
+      runScore: 12500,
+      stageScore: 8000,
+      timeBonus: 2250,
+      timeLeft: 45,
+      recoveredHeart: true,
+      recoveredAids: true,
+      pairs: 48,
+      bestStreak: 12,
+      heartsLeft: 3,
+      records: { score: true, stage: false, streak: false },
+      previousBest: { score: 10000, stage: 5, streak: 10 },
+      newUnlocks: [],
+    };
+    render(
+      <RunResult
+        isOpen={true}
+        phase="cleared"
+        summary={summary}
+        canContinue={true}
+        continueLabel="Next stage 6 →"
+        onContinue={() => {}}
+        onRetryRun={() => {}}
+        onChangeMode={() => {}}
+      />,
+    );
+    expect(screen.getByText(/Speed Bonus/)).toBeInTheDocument();
+    expect(screen.getByText(/\+2,250 pts/)).toBeInTheDocument();
+    expect(screen.getByText(/\+1 Life Restored!/)).toBeInTheDocument();
+    expect(screen.getByText(/\+1 Hint & Shuffle Bonus!/)).toBeInTheDocument();
+  });
+
+  it('renders clock in frozen and overtime states', () => {
+    const baseHud: SoloHud = {
+      mode: 'adventure',
+      modeLabel: 'Adventure',
+      stage: 5,
+      stageNote: '5 chrono',
+      objective: 'Clear the board',
+      timed: true,
+      timeLeft: 120,
+      isUrgent: false,
+      isCritical: false,
+      isFrozen: true,
+      freezeLeft: 5,
+      hearts: 3,
+      heartsLeft: 3,
+      score: 1000,
+      runScore: 1000,
+      streak: 2,
+      tier: 1,
+      fever: false,
+      comboProgress: 0.5,
+      hintsLeft: 3,
+      shufflesLeft: 3,
+      pairsLeft: 20,
+      totalPairs: 24,
+      bestScore: 5000,
+    };
+    const { container, rerender } = render(
+      <RunHud
+        hud={baseHud}
+        isMuted={false}
+        canHint={true}
+        canShuffle={true}
+        onHint={() => {}}
+        onShuffle={() => {}}
+        onToggleSound={() => {}}
+        onQuit={() => {}}
+      />,
+    );
+    const clock = container.querySelector('[data-clock]')!;
+    expect(clock).toHaveAttribute('data-frozen', 'true');
+    expect(clock).toHaveTextContent(/❄ 02:00/);
+
+    rerender(
+      <RunHud
+        hud={{
+          ...baseHud,
+          timeLeft: 0,
+          isFrozen: false,
+          freezeLeft: 0,
+          isOvertime: true,
+          overtimeLeft: 3,
+          isCritical: true,
+        }}
+        isMuted={false}
+        canHint={true}
+        canShuffle={true}
+        onHint={() => {}}
+        onShuffle={() => {}}
+        onToggleSound={() => {}}
+        onQuit={() => {}}
+      />,
+    );
+    expect(clock).toHaveAttribute('data-overtime', 'true');
+    expect(clock).toHaveTextContent(/⚡ 00:03/);
   });
 });

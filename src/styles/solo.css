@@ -292,6 +292,11 @@
   background: var(--gold);
 }
 
+.mark-guide__term[data-mark='chrono'] {
+  color: oklch(20% 0.1 195);
+  background: oklch(88% 0.12 195);
+}
+
 .mark-guide__term[data-mark='ice'] {
   color: var(--ice-ink);
   background: var(--ice);
@@ -544,6 +549,72 @@
 
 .panel--run-result .stars {
   margin: 0 0 var(--gap);
+}
+
+.result__time-rewards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-tight);
+  margin: 0 0 var(--gap);
+  padding: 0.75rem 1rem;
+  background: var(--chrome-hi);
+  border: 1px solid var(--chrome-lo);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--bevel-sunken);
+}
+
+.time-reward {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--gap-tight);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+.time-reward--bonus {
+  font-weight: 700;
+  color: oklch(30% 0.14 145);
+  font-size: var(--text-sm);
+  padding-bottom: 0.35rem;
+  border-bottom: 1px dashed var(--chrome-lo);
+}
+
+.time-reward__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.time-reward__val {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  color: oklch(35% 0.16 145);
+}
+
+.time-reward__badge {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 800;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--chrome-edge);
+}
+
+.time-reward--heart .time-reward__badge {
+  background: oklch(90% 0.12 25);
+  color: oklch(35% 0.22 25);
+}
+
+.time-reward--aids .time-reward__badge {
+  background: oklch(90% 0.1 220);
+  color: oklch(32% 0.16 220);
+}
+
+.time-reward__desc {
+  font-weight: 700;
+  color: var(--ink);
 }
 
 .result__records {

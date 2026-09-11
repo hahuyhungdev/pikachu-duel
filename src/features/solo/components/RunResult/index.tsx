@@ -45,7 +45,8 @@ function headlineFor(phase: RunPhase, summary: RunSummary, isLadder: boolean): s
 
 function ledeFor(phase: RunPhase, summary: RunSummary, isLadder: boolean): string {
   if (phase === 'cleared') {
-    return `+${num(summary.stageScore)} this stage · ${num(summary.pairs)} pairs.`;
+    const timeText = summary.timeBonus && summary.timeBonus > 0 ? ` (+${num(summary.timeBonus)} speed bonus)` : '';
+    return `+${num(summary.stageScore)} this stage${timeText} · ${num(summary.pairs)} pairs.`;
   }
   if (phase === 'failed') {
     return `${lives(summary.heartsLeft)} left. Same stage, one more go.`;
@@ -115,6 +116,29 @@ export function RunResult({
           </ul>
         ) : null}
 
+        {phase === 'cleared' && ((summary.timeBonus && summary.timeBonus > 0) || summary.recoveredHeart || summary.recoveredAids) ? (
+          <div className="result__time-rewards" data-reward-strip>
+            {summary.timeBonus && summary.timeBonus > 0 ? (
+              <div className="time-reward time-reward--bonus">
+                <span className="time-reward__label">⏱ Speed Bonus (+50/s)</span>
+                <b className="time-reward__val">+{num(summary.timeBonus)} pts ({summary.timeLeft}s left)</b>
+              </div>
+            ) : null}
+            {summary.recoveredHeart ? (
+              <div className="time-reward time-reward--heart">
+                <span className="time-reward__badge">❤️ Fast Clear (≥45s)</span>
+                <span className="time-reward__desc">+1 Life Restored!</span>
+              </div>
+            ) : null}
+            {summary.recoveredAids ? (
+              <div className="time-reward time-reward--aids">
+                <span className="time-reward__badge">✨ Speed Milestone (≥30s)</span>
+                <span className="time-reward__desc">+1 Hint &amp; Shuffle Bonus!</span>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="result__records">
           {records.score ? (
             <RecordRow
@@ -163,6 +187,12 @@ export function RunResult({
         <dl className="result__stats">
           <dt>Run score</dt>
           <dd>{num(summary.runScore)}</dd>
+          {summary.timeBonus && summary.timeBonus > 0 ? (
+            <>
+              <dt>Speed bonus</dt>
+              <dd>+{num(summary.timeBonus)}</dd>
+            </>
+          ) : null}
           {isLadder ? (
             <>
               <dt>Stage reached</dt>
