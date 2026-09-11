@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pikachu Duel</title>
+<meta name="description" content="Two-player Pikachu tile-matching race — same board, side by side, first to clear it wins.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="src/styles/tokens.css">
+<link rel="stylesheet" href="src/styles/game.css">
+</head>
+<body>
+<div class="shell" data-app>
+
+  <header class="hud">
+    <div class="brand">
+      <span class="bolt" aria-hidden="true">⚡</span>
+      <span>Pikachu <em>Duel</em></span>
+      <span class="field" style="margin-left:.5rem"><span data-seed>#—</span></span>
+    </div>
+    <output class="clock" data-clock aria-label="Match clock">05:00</output>
+    <div class="hud__actions">
+      <button class="btn" type="button" data-action="rematch" disabled>Rematch</button>
+      <button class="btn" type="button" data-action="new">New duel</button>
+      <button class="btn" type="button" data-action="sound" aria-pressed="true">Sound on</button>
+    </div>
+  </header>
+
+  <main class="arena" data-arena>
+
+    <section class="cabinet" data-cabinet data-player="1" data-state="playing">
+      <header class="cabinet__head">
+        <div class="who">
+          <span class="badge">P1</span>
+          <h2 data-role="name">Player One</h2>
+        </div>
+        <dl class="stats">
+          <div><dt>Score</dt><dd data-role="score">0</dd></div>
+          <div><dt>Pairs</dt><dd data-role="pairs">0/32</dd></div>
+          <div><dt>Streak</dt><dd data-role="streak">×0</dd></div>
+        </dl>
+      </header>
+      <div class="meter"><span class="meter__fill" data-role="meter"></span></div>
+      <div data-board-mount></div>
+      <footer class="tools">
+        <div class="hud__actions">
+          <button class="btn" type="button" data-action="hint">Hint <kbd>Q</kbd><span class="count" data-role="hints">3</span></button>
+          <button class="btn" type="button" data-action="shuffle">Shuffle <kbd>E</kbd><span class="count" data-role="shuffles">3</span></button>
+        </div>
+        <p class="tools__keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · <kbd>Space</kbd> pick</p>
+      </footer>
+    </section>
+
+    <section class="cabinet" data-cabinet data-player="2" data-state="playing">
+      <header class="cabinet__head">
+        <div class="who">
+          <span class="badge">P2</span>
+          <h2 data-role="name">Player Two</h2>
+        </div>
+        <dl class="stats">
+          <div><dt>Score</dt><dd data-role="score">0</dd></div>
+          <div><dt>Pairs</dt><dd data-role="pairs">0/32</dd></div>
+          <div><dt>Streak</dt><dd data-role="streak">×0</dd></div>
+        </dl>
+      </header>
+      <div class="meter"><span class="meter__fill" data-role="meter"></span></div>
+      <div data-board-mount></div>
+      <footer class="tools">
+        <div class="hud__actions">
+          <button class="btn" type="button" data-action="hint">Hint <kbd>,</kbd><span class="count" data-role="hints">3</span></button>
+          <button class="btn" type="button" data-action="shuffle">Shuffle <kbd>.</kbd><span class="count" data-role="shuffles">3</span></button>
+        </div>
+        <p class="tools__keys"><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> move · <kbd>Enter</kbd> pick</p>
+      </footer>
+    </section>
+
+  </main>
+
+  <div class="overlay" data-overlay="start">
+    <div class="panel">
+      <h1>Pikachu<em>Duel</em></h1>
+      <p class="panel__lede">
+        Two players, one identical board each, side by side. Clear your grid before
+        your opponent clears theirs.
+      </p>
+
+      <form data-start-form>
+        <div class="setup">
+          <label class="field">Player 1 name
+            <input name="p1" type="text" maxlength="18" placeholder="Player One" autocomplete="off">
+          </label>
+          <label class="field">Player 2 name
+            <input name="p2" type="text" maxlength="18" placeholder="Player Two" autocomplete="off">
+          </label>
+          <label class="field">Board
+            <select name="difficulty">
+              <option value="rookie">Rookie — 6 × 6</option>
+              <option value="trainer" selected>Trainer — 8 × 8</option>
+              <option value="champion">Champion — 8 × 10</option>
+            </select>
+          </label>
+          <label class="field">Clock
+            <select name="clock">
+              <option value="180">3 minutes</option>
+              <option value="300" selected>5 minutes</option>
+              <option value="480">8 minutes</option>
+              <option value="0">No clock</option>
+            </select>
+          </label>
+        </div>
+
+        <ul class="rules">
+          <li>Pick <b>two identical tiles</b>. They clear if a path can join them with <b>at most two turns</b>.</li>
+          <li>The path may only cross <b>empty space</b> — cleared tiles, or the gap around the outside of the board.</li>
+          <li><b>Player 1</b> plays the left board: click, or <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> + <kbd>Space</kbd>, hint <kbd>Q</kbd>, shuffle <kbd>E</kbd>.</li>
+          <li><b>Player 2</b> plays the right board: click, or <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> + <kbd>Enter</kbd>, hint <kbd>,</kbd>, shuffle <kbd>.</kbd>.</li>
+          <li>Consecutive matches build a <b>streak</b> worth extra points. Run the clock out and the most pairs wins.</li>
+        </ul>
+
+        <div class="panel__actions">
+          <button class="btn btn--primary" type="submit">Start duel</button>
+          <span class="tools__keys">Both boards are dealt from the same seed — nobody gets an easier grid.</span>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="overlay" data-overlay="result" hidden>
+    <div class="panel">
+      <p class="result__banner" data-result-banner></p>
+      <div class="scoreboard" data-scoreboard></div>
+      <div class="panel__actions">
+        <button class="btn btn--primary" type="button" data-action="play-again">Same board again</button>
+        <button class="btn" type="button" data-action="fresh-board">Fresh board</button>
+        <button class="btn" type="button" data-action="new">Change settings</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" data-toast hidden></div>
+</div>
+
+<script type="module">
+  import { mountApp } from './src/ui/app.js';
+  mountApp(document.querySelector('[data-app]'));
+</script>
+</body>
+</html>

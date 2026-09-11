@@ -1,0 +1,66 @@
+/* Design tokens — arcade cabinet direction.
+   Committed single look: a lit cabinet in a dim room. */
+
+:root {
+  color-scheme: dark;
+
+  /* Chassis */
+  --ink-deep: oklch(10% 0.03 265);
+  --ink: oklch(15% 0.04 265);
+  --chassis: oklch(21% 0.042 265);
+  --chassis-hi: oklch(27% 0.045 265);
+  --edge: oklch(7% 0.02 265);
+  --line: oklch(36% 0.035 265);
+
+  /* Ink */
+  --text: oklch(95% 0.012 265);
+  --muted: oklch(70% 0.025 265);
+  --faint: oklch(55% 0.025 265);
+
+  /* Energy */
+  --bolt: oklch(86% 0.185 96);
+  --bolt-deep: oklch(66% 0.16 78);
+  --p1: oklch(80% 0.135 205);
+  --p1-deep: oklch(58% 0.12 210);
+  --p2: oklch(72% 0.19 352);
+  --p2-deep: oklch(54% 0.17 355);
+  --danger: oklch(66% 0.2 25);
+  --good: oklch(78% 0.17 150);
+
+  /* Type */
+  --font-display: 'Bungee', 'Arial Black', 'Impact', system-ui, sans-serif;
+  --font-body: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', 'Consolas', monospace;
+
+  --text-xs: 0.6875rem;
+  --text-sm: 0.8125rem;
+  --text-md: 0.9375rem;
+  --text-lg: clamp(1.05rem, 0.9rem + 0.6vw, 1.5rem);
+  --text-xl: clamp(1.6rem, 1rem + 2.2vw, 3rem);
+  --text-hero: clamp(2.4rem, 1rem + 6vw, 6rem);
+
+  /* Rhythm — deliberately uneven, not one padding everywhere */
+  --gap-hair: 0.25rem;
+  --gap-tight: 0.5rem;
+  --gap: 0.875rem;
+  --gap-wide: 1.5rem;
+  --gap-section: clamp(1.25rem, 0.5rem + 2vw, 2.75rem);
+
+  --radius-sm: 3px;
+  --radius: 6px;
+  --radius-lg: 14px;
+
+  --lift: 4px;
+  --duration-snap: 110ms;
+  --duration: 240ms;
+  --duration-slow: 620ms;
+  --ease-snap: cubic-bezier(0.2, 0.9, 0.25, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-snap: 1ms;
+    --duration: 1ms;
+    --duration-slow: 1ms;
+  }
+}
