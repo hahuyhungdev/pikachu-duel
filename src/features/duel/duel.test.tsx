@@ -20,10 +20,11 @@ describe('Pikachu Duel React feature', () => {
     expect(screen.getByRole('option', { name: /classic.*9 × 16.*24 pokémon/i })).toBeInTheDocument();
   });
 
-  it('renders a React-owned setup flow with local and online modes', () => {
+  it('renders a React-owned setup flow with solo, local, and online modes', () => {
     render(<DuelGame />);
 
     expect(screen.getByRole('heading', { name: /pikachu duel/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /solo/i })).toHaveAttribute('aria-selected', 'false');
     expect(screen.getByRole('tab', { name: /same computer/i })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tab', { name: /online/i })).toHaveAttribute('aria-selected', 'false');
     expect(screen.getByRole('button', { name: /start duel/i })).toBeEnabled();

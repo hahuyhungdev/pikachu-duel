@@ -742,6 +742,18 @@ kbd {
   .tile { border-width: 1px; }
 }
 
+/* ---------- Solo mode ---------- */
+.arena[data-mode='solo'] {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.arena[data-mode='solo'] .cabinet[data-player='2'] {
+  display: none !important;
+}
+
 /* ---------- Online mode ---------- */
 
 /* One big board for me, a narrow readout for my opponent. */
@@ -808,9 +820,15 @@ kbd {
 
 .modes {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--gap-tight);
   margin-bottom: var(--gap-wide);
+}
+
+@media (max-width: 600px) {
+  .modes {
+    grid-template-columns: 1fr;
+  }
 }
 
 .mode {

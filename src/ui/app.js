@@ -68,6 +68,10 @@ export function mountApp(root) {
     toast: el('[data-toast]'),
     cabinets: [...root.querySelectorAll('[data-cabinet]')],
     modeButtons: [...root.querySelectorAll('[data-mode-btn]')],
+    fieldP2: el('[data-field-p2]'),
+    p1Label: el('[data-p1-label]'),
+    startSubmit: el('[data-start-submit]'),
+    rulesGoal: el('[data-rules-goal]'),
     onlineForm: el('[data-online-form]'),
     onlineNote: el('[data-online-note]'),
     linkState: el('[data-link-state]'),
@@ -124,9 +128,13 @@ export function mountApp(root) {
     const data = new FormData(dom.startForm);
     const rawDifficulty = String(data.get('difficulty') ?? 'normal');
     const difficulty = normalizeDifficulty(rawDifficulty);
+    const activeModeBtn = dom.modeButtons.find((b) => b.getAttribute('aria-selected') === 'true');
+    const mode = activeModeBtn?.dataset.modeBtn === 'solo' ? 'solo' : 'local';
+    const p1Fallback = mode === 'solo' ? 'Player' : 'Player One';
     return {
+      mode,
       names: [
-        String(data.get('p1') ?? '').trim().slice(0, 18) || 'Player One',
+        String(data.get('p1') ?? '').trim().slice(0, 18) || p1Fallback,
         String(data.get('p2') ?? '').trim().slice(0, 18) || 'Player Two',
       ],
       difficulty,
@@ -286,6 +294,12 @@ export function mountApp(root) {
     });
 
     player.els.name.textContent = session.label;
+    const badge = cabinet.querySelector('.badge');
+    if (badge) badge.textContent = setup.mode === 'solo' ? 'SOLO' : `P${index + 1}`;
+    const keys = cabinet.querySelector('.tools__keys');
+    if (keys && setup.mode === 'solo') {
+      keys.textContent = 'WASD or Arrows move · Space or Enter pick';
+    }
     cabinet.dataset.state = 'playing';
     delete cabinet.dataset.remote;
     if (player.els.remotePanel) player.els.remotePanel.hidden = true;
@@ -366,6 +380,8 @@ export function mountApp(root) {
           reportFinish(players[0], 'timeup');
           clearInterval(timerId);
           setRemoteState('Time — waiting for the opponent…');
+        } else if (duel.mode === 'solo') {
+          finish('time', -1);
         } else {
           finish('time', decideWinner());
         }
@@ -379,6 +395,7 @@ export function mountApp(root) {
   /** Local mode only: who is ahead when the clock runs out. */
   function decideWinner() {
     const [a, b] = players;
+    if (!b) return 0;
     if (a.session.matchedPairs !== b.session.matchedPairs) {
       return a.session.matchedPairs > b.session.matchedPairs ? 0 : 1;
     }
@@ -391,24 +408,44 @@ export function mountApp(root) {
     duel.over = true;
     clearInterval(timerId);
 
+    const isSolo = duel.mode === 'solo';
+
     for (const player of players) {
       if (player.session.status === 'playing') timeOut(player.session);
-      const won = player.index === winner;
+      const won = isSolo ? reason === 'cleared' : player.index === winner;
       player.els.cabinet.dataset.state = won ? 'won' : 'lost';
-      player.view.setVeil(
-        winner === -1 ? 'Draw' : won ? 'Winner' : 'Beaten',
-        won && reason === 'cleared' ? 'Board cleared' : `${player.session.matchedPairs} pairs`,
-      );
+      if (isSolo) {
+        player.view.setVeil(
+          won ? 'Stage Cleared!' : "Time's Up!",
+          won ? `Finished in ${clockText(duel.elapsed)}` : `${player.session.matchedPairs} pairs`,
+        );
+      } else {
+        player.view.setVeil(
+          winner === -1 ? 'Draw' : won ? 'Winner' : 'Beaten',
+          won && reason === 'cleared' ? 'Board cleared' : `${player.session.matchedPairs} pairs`,
+        );
+      }
       syncPlayer(player);
     }
 
     dom.resultBanner.replaceChildren();
-    const lead = document.createElement('span');
-    if (winner === -1) {
-      dom.resultBanner.append(document.createTextNode('Dead heat'));
+    if (isSolo) {
+      const won = reason === 'cleared';
+      const lead = document.createElement('span');
+      if (won) {
+        lead.textContent = players[0].session.label;
+        dom.resultBanner.append(document.createTextNode('Stage Cleared! Great job, '), lead);
+      } else {
+        dom.resultBanner.append(document.createTextNode("Time's up! Try again."));
+      }
     } else {
-      lead.textContent = players[winner].session.label;
-      dom.resultBanner.append(document.createTextNode('Winner'), lead);
+      const lead = document.createElement('span');
+      if (winner === -1) {
+        dom.resultBanner.append(document.createTextNode('Dead heat'));
+      } else {
+        lead.textContent = players[winner].session.label;
+        dom.resultBanner.append(document.createTextNode('Winner'), lead);
+      }
     }
 
     dom.scoreboard.replaceChildren();
@@ -416,7 +453,7 @@ export function mountApp(root) {
       const card = document.createElement('article');
       card.className = 'score-card';
       card.dataset.player = String(player.index + 1);
-      card.dataset.winner = String(player.index === winner);
+      card.dataset.winner = String(isSolo ? reason === 'cleared' : player.index === winner);
       const title = document.createElement('h3');
       title.textContent = player.session.label;
       const list = document.createElement('dl');
@@ -444,7 +481,11 @@ export function mountApp(root) {
     } else {
       dom.playAgain.focus();
     }
-    sfx.win();
+    if (isSolo ? reason === 'cleared' : winner !== -1) {
+      sfx.win();
+    } else {
+      sfx.reject();
+    }
   }
 
   function advanceNextLevel() {
@@ -475,11 +516,18 @@ export function mountApp(root) {
   function startDuel(setup, seed = randomSeed()) {
     clearInterval(timerId);
     leaveRelay();
-    dom.arena.dataset.mode = 'local';
+    const mode = setup.mode ?? 'local';
+    dom.arena.dataset.mode = mode;
     dom.lobby.hidden = true;
     const level = setup.level ?? 1;
-    duel = { mode: 'local', seed, setup, limit: setup.clock, elapsed: 0, over: false, level };
-    players = [0, 1].map((index) => buildPlayer(index, setup, seed));
+    duel = { mode, seed, setup, limit: setup.clock, elapsed: 0, over: false, level };
+    if (mode === 'solo') {
+      players = [buildPlayer(0, setup, seed)];
+      if (dom.cabinets[1]) dom.cabinets[1].hidden = true;
+    } else {
+      if (dom.cabinets[1]) dom.cabinets[1].hidden = false;
+      players = [0, 1].map((index) => buildPlayer(index, setup, seed));
+    }
     dom.seed.textContent = `#${seed.toString(36).toUpperCase()}`;
     dom.clock.textContent = clockText(setup.clock > 0 ? setup.clock : 0);
     dom.clock.dataset.urgent = 'false';
@@ -490,7 +538,11 @@ export function mountApp(root) {
     updateLevelDisplay(level, setup.difficulty);
     const diffInfo = PRESETS[setup.difficulty] ?? PRESETS.normal;
     const diffName = diffInfo.difficultyLabel ?? 'Medium';
-    toast(`Level ${level} · ${diffName} (${diffInfo.label}) duel — same board for both players`);
+    if (mode === 'solo') {
+      toast(`Level ${level} · ${diffName} (${diffInfo.label}) solo — clear the board before time runs out!`);
+    } else {
+      toast(`Level ${level} · ${diffName} (${diffInfo.label}) duel — same board for both players`);
+    }
   }
 
   dom.startForm.addEventListener('submit', (event) => {
@@ -510,6 +562,7 @@ export function mountApp(root) {
       if (duel) duel.over = true;
       dom.result.hidden = true;
       dom.start.hidden = false;
+      if (dom.cabinets[1]) dom.cabinets[1].hidden = false;
     });
   }
 
@@ -530,7 +583,8 @@ export function mountApp(root) {
     if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement) return;
 
     for (const map of KEYMAP) {
-      const player = players[map.player];
+      const playerIndex = duel.mode === 'solo' ? 0 : map.player;
+      const player = players[playerIndex];
       if (!player || player.session.status !== 'playing') continue;
 
       if (map.up.includes(event.code)) { event.preventDefault(); player.view.moveCursor(-1, 0); return; }
@@ -560,7 +614,9 @@ export function mountApp(root) {
     const parsedSeed = seedParam ? parseInt(seedParam, 36) : NaN;
     const rawDiff = params.get('difficulty') ?? params.get('board');
     const diff = rawDiff ? normalizeDifficulty(rawDiff) : null;
+    const modeParam = params.get('mode');
     return {
+      mode: modeParam === 'solo' ? 'solo' : modeParam === 'local' ? 'local' : null,
       room: params.get('room'),
       name: params.get('name'),
       names: [params.get('p1'), params.get('p2')],
@@ -642,6 +698,7 @@ export function mountApp(root) {
     dom.result.hidden = true;
     dom.start.hidden = false;
     dom.arena.dataset.mode = 'local';
+    if (dom.cabinets[1]) dom.cabinets[1].hidden = false;
   }
 
   function reportFinish(player, reason) {
@@ -675,6 +732,7 @@ export function mountApp(root) {
 
     duel = { mode: 'online', seed, setup, limit: setup.clock, elapsed: 0, over: false, reported: false, level: setup.level };
     dom.arena.dataset.mode = 'online';
+    if (dom.cabinets[1]) dom.cabinets[1].hidden = false;
     players = [buildPlayer(0, setup, seed), buildRemotePlayer(1, setup, setup.names[1])];
 
     dom.seed.textContent = `#${Number(seed).toString(36).toUpperCase()}`;
@@ -835,6 +893,9 @@ export function mountApp(root) {
 
   function restorePreferences() {
     const previous = saved();
+    if (previous.mode && ['solo', 'local'].includes(previous.mode)) {
+      showMode(previous.mode);
+    }
     if (previous.names) {
       dom.startForm.elements.p1.value = previous.names[0] ?? '';
       dom.startForm.elements.p2.value = previous.names[1] ?? '';
@@ -849,6 +910,7 @@ export function mountApp(root) {
   }
 
   function applyQuery(query) {
+    if (query.mode) showMode(query.mode);
     const form = dom.startForm.elements;
     if (query.names[0]) form.p1.value = query.names[0].slice(0, 18);
     if (query.names[1]) form.p2.value = query.names[1].slice(0, 18);
@@ -857,8 +919,8 @@ export function mountApp(root) {
     if (query.auto) startDuel(readSetup(), query.seed ?? randomSeed());
   }
 
-  restorePreferences();
   showMode('local');
+  restorePreferences();
 
   const query = fromQuery();
   if (query?.room && isRoomCode(String(query.room))) openInvite(query);

@@ -161,4 +161,79 @@ describe('App core duel interactions', () => {
     expect(tiles(playerOne)).toHaveLength(192);
     expect(within(playerOne).getByText('0/96')).toBeInTheDocument();
   });
+
+  it('switches to solo mode, hides player 2 cabinet, and adapts badges and controls', async () => {
+    const { container } = render(<App />);
+
+    const soloTab = screen.getByRole('tab', { name: /solo/i });
+    fireEvent.click(soloTab);
+
+    expect(soloTab).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: /same computer/i })).toHaveAttribute('aria-selected', 'false');
+
+    const p2Field = container.querySelector('[data-field-p2]');
+    expect(p2Field).toHaveAttribute('hidden');
+    expect(container.querySelector('[data-p1-label]')).toHaveTextContent('Your name');
+    expect(screen.getByRole('button', { name: /start solo game/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /start solo game/i }));
+
+    const arena = container.querySelector('[data-arena]');
+    expect(arena).toHaveAttribute('data-mode', 'solo');
+
+    const p1Cabinet = container.querySelector<HTMLElement>('[data-player="1"]');
+    const p2Cabinet = container.querySelector<HTMLElement>('[data-player="2"]');
+    expect(p1Cabinet).not.toBeNull();
+    expect(p2Cabinet).not.toBeNull();
+    expect(p2Cabinet).toHaveAttribute('hidden');
+
+    expect(p1Cabinet!.querySelector('.badge')).toHaveTextContent('SOLO');
+    expect(p1Cabinet!.querySelector('.tools__keys')).toHaveTextContent(
+      'WASD or Arrows move · Space or Enter pick',
+    );
+
+    // Both WASD/Q and Arrow/Comma keyboard shortcuts work for Player 1
+    fireEvent.keyDown(window, { code: 'KeyQ' });
+    expect(p1Cabinet!.querySelector('[data-role="hints"]')).toHaveTextContent('1');
+
+    fireEvent.keyDown(window, { code: 'Comma' });
+    expect(p1Cabinet!.querySelector('[data-role="hints"]')).toHaveTextContent('0');
+
+    // Matching tiles works as expected
+    const hintedTiles = [
+      ...p1Cabinet!.querySelectorAll<HTMLButtonElement>('.tile[data-hint="true"]'),
+    ];
+    expect(hintedTiles).toHaveLength(2);
+    fireEvent.click(hintedTiles[0]);
+    fireEvent.click(hintedTiles[1]);
+
+    expect(p1Cabinet!.querySelector('[data-role="score"]')).toHaveTextContent('100');
+    expect(p1Cabinet!.querySelector('[data-role="pairs"]')).toHaveTextContent('1/72');
+
+    await waitFor(() => {
+      expect(hintedTiles[0]).toHaveAttribute('data-empty', 'true');
+      expect(hintedTiles[1]).toHaveAttribute('data-empty', 'true');
+    });
+
+    // Next level retains solo mode
+    const nextLevelBtn = container.querySelector<HTMLButtonElement>('[data-action="next-level"]');
+    expect(nextLevelBtn).not.toBeNull();
+    fireEvent.click(nextLevelBtn!);
+
+    expect(container.querySelector('[data-level]')).toHaveTextContent('Level 2 · Hard');
+    expect(p2Cabinet).toHaveAttribute('hidden');
+    expect(arena).toHaveAttribute('data-mode', 'solo');
+  });
+
+  it('supports launching solo mode via query parameters', () => {
+    window.history.replaceState({}, '', '/?mode=solo&difficulty=easy&auto=1');
+    const { container } = render(<App />);
+
+    const arena = container.querySelector('[data-arena]');
+    expect(arena).toHaveAttribute('data-mode', 'solo');
+
+    const p2Cabinet = container.querySelector<HTMLElement>('[data-player="2"]');
+    expect(p2Cabinet).toHaveAttribute('hidden');
+    expect(container.querySelector('[data-level]')).toHaveTextContent('Level 1 · Easy');
+  });
 });

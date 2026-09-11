@@ -27,8 +27,22 @@ export function createLobbyView({ dom, getNet }) {
     for (const button of dom.modeButtons) {
       button.setAttribute('aria-selected', String(button.dataset.modeBtn === mode));
     }
-    dom.startForm.hidden = mode !== 'local';
+    dom.startForm.hidden = mode === 'online';
     dom.onlineForm.hidden = mode !== 'online';
+    if (dom.fieldP2) {
+      dom.fieldP2.hidden = mode === 'solo';
+    }
+    if (dom.p1Label) {
+      dom.p1Label.textContent = mode === 'solo' ? 'Your name' : 'Player 1 name';
+    }
+    if (dom.startSubmit) {
+      dom.startSubmit.textContent = mode === 'solo' ? 'Start solo game' : 'Start duel';
+    }
+    if (dom.rulesGoal) {
+      dom.rulesGoal.textContent = mode === 'solo'
+        ? 'Clear the board before the clock runs out.'
+        : 'Clear the mirrored grid before your rival.';
+    }
     note('');
   }
 

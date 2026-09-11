@@ -58,6 +58,9 @@ function StartOverlay() {
         </p>
 
         <div className="modes" role="tablist" aria-label="How you want to play">
+          <button className="mode" type="button" role="tab" data-mode-btn="solo" aria-selected="false">
+            Solo<small>One player against the clock</small>
+          </button>
           <button className="mode" type="button" role="tab" data-mode-btn="local" aria-selected="true">
             Same computer<small>Two players, one keyboard</small>
           </button>
@@ -84,10 +87,12 @@ function StartOverlay() {
 
         <form data-start-form>
           <div className="setup">
-            <label className="field">Player 1 name
+            <label className="field" data-field-p1>
+              <span data-p1-label>Player 1 name</span>
               <input name="p1" type="text" maxLength={18} placeholder="Player One" autoComplete="off" />
             </label>
-            <label className="field">Player 2 name
+            <label className="field" data-field-p2>
+              <span>Player 2 name</span>
               <input name="p2" type="text" maxLength={18} placeholder="Player Two" autoComplete="off" />
             </label>
             <label className="field">Board / Difficulty
@@ -110,11 +115,11 @@ function StartOverlay() {
           <div className="rules-brief">
             <div><span>01</span><p>Match two identical Pokémon.</p></div>
             <div><span>02</span><p>Connect through empty space with ≤ 2 turns.</p></div>
-            <div><span>03</span><p>Clear the mirrored grid before your rival.</p></div>
+            <div><span>03</span><p data-rules-goal>Clear the mirrored grid before your rival.</p></div>
           </div>
 
           <div className="panel__actions">
-            <button className="btn btn--primary" type="submit">Start duel</button>
+            <button className="btn btn--primary" type="submit" data-start-submit>Start duel</button>
             <span className="tools__keys">Default arena: 16 columns × 9 rows.</span>
           </div>
         </form>
