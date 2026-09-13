@@ -473,8 +473,9 @@ kbd {
 .board {
   container-type: size;
   display: grid;
-  width: 100%;
-  max-width: min(100%, calc((100dvh - 14.5rem) * var(--unit-w) / var(--unit-h)));
+  width: min(calc((100dvh - 5rem) * var(--unit-w) / var(--unit-h) * var(--zoom, 1)), calc(96vw * var(--zoom, 1)));
+  max-width: min(calc((100dvh - 5rem) * var(--unit-w) / var(--unit-h) * var(--zoom, 1)), calc(96vw * var(--zoom, 1)));
+  max-height: calc((100dvh - 5rem) * var(--zoom, 1));
   margin-inline: auto;
   aspect-ratio: var(--unit-w) / var(--unit-h);
   grid-template-columns: 0.5fr repeat(var(--cols), 1fr) 0.5fr;
