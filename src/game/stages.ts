@@ -39,10 +39,10 @@ const GRAVITY_ROTATION: readonly GravityMode[] = GRAVITY_MODES.filter(
   (mode): mode is Exclude<GravityMode, 'none'> => mode !== 'none'
 );
 
-/** Progression formula constants */
+/** Progression formula constants - balanced for human progression up to stage 100 */
 const BASE_SECONDS_PER_PAIR = 6.5;
-const STAGE_SECONDS_DECREMENT = 0.16;
-const MIN_SECONDS_PER_PAIR = 2.6;
+const STAGE_SECONDS_DECREMENT = 0.032;
+const MIN_SECONDS_PER_PAIR = 3.5;
 
 const SILVER_MULTIPLIER_PER_PAIR = 130;
 const GOLD_MULTIPLIER_PER_PAIR = 190;
@@ -51,8 +51,8 @@ const GOLD_BONUS_PER_STAGE = 40;
 const MIN_STAGE_ICONS = 8;
 const BASE_STAGE_ICONS = 10;
 
-const BASE_STAGE_BOMB_FUSE = 16;
-const MIN_STAGE_BOMB_FUSE = 6;
+const BASE_STAGE_BOMB_FUSE = 18;
+const MIN_STAGE_BOMB_FUSE = 8;
 
 /** Star scoring requirements for a stage. */
 export interface StageStarThresholds {
@@ -152,13 +152,13 @@ export function stageConfig(stage: number, { portrait = false }: StageConfigOpti
       : GRAVITY_ROTATION[Math.floor((n - INTRODUCES.gravity) / 2) % GRAVITY_ROTATION.length];
 
   const gold = countFor(n, INTRODUCES.gold, 3, 6);
-  const chrono = countFor(n, INTRODUCES.chrono, 4, 3);
+  const chrono = countFor(n, INTRODUCES.chrono, 4, 4);
   const ice = countFor(n, INTRODUCES.ice, 4, 6);
   const bomb = countFor(n, INTRODUCES.bomb, 5, 3);
 
-  // Aids decrease over the initial 10 stages and plateau at 1 each
-  const hints = Math.max(1, 3 - Math.floor((n - FIRST_STAGE) / 5));
-  const shuffles = Math.max(1, 3 - Math.floor((n - FIRST_STAGE) / 6));
+  // Aids scale gracefully: starting with 3 aids, transitioning to 2 aids at stage 13 to maintain a fair safety margin
+  const hints = Math.max(2, 3 - Math.floor((n - FIRST_STAGE) / 12));
+  const shuffles = Math.max(2, 3 - Math.floor((n - FIRST_STAGE) / 12));
 
   const silver = Math.round(pairs * SILVER_MULTIPLIER_PER_PAIR);
   const goldScore = Math.round(pairs * GOLD_MULTIPLIER_PER_PAIR + n * GOLD_BONUS_PER_STAGE);
@@ -168,7 +168,10 @@ export function stageConfig(stage: number, { portrait = false }: StageConfigOpti
     rows,
     cols,
     pairs,
-    iconCount: Math.min(MAX_ICONS, Math.max(MIN_STAGE_ICONS, Math.min(pairs, BASE_STAGE_ICONS + Math.floor(n / 2)))),
+    iconCount: Math.min(
+      MAX_ICONS,
+      Math.max(MIN_STAGE_ICONS, Math.min(pairs, BASE_STAGE_ICONS + Math.floor((n - 1) / 3)))
+    ),
     clock: Math.round(pairs * secondsPerPair(n)),
     hints,
     shuffles,
@@ -177,7 +180,7 @@ export function stageConfig(stage: number, { portrait = false }: StageConfigOpti
     chrono,
     ice,
     bomb,
-    bombFuse: bomb > 0 ? Math.max(MIN_STAGE_BOMB_FUSE, BASE_STAGE_BOMB_FUSE - n) : 0,
+    bombFuse: bomb > 0 ? Math.max(MIN_STAGE_BOMB_FUSE, BASE_STAGE_BOMB_FUSE - Math.floor(n / 6)) : 0,
     stars: { silver, gold: goldScore },
   };
 }
