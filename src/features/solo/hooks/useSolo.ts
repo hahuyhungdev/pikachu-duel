@@ -117,8 +117,17 @@ export function useSolo(userId?: string | null, accountProfile?: Profile) {
 
   const [localProfile, setProfile] = useState<Profile>(() => loadProfile(userId));
   const profile = accountProfile ?? localProfile;
+  const isPortraitMode = useCallback(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth <= 680 && window.innerHeight > window.innerWidth;
+  }, []);
+
   const [mode, setMode] = useState<GameMode>(saved.mode ?? 'adventure');
-  const [difficulty, setDifficulty] = useState<Difficulty>(saved.difficulty ?? 'normal');
+  const [difficulty, setDifficulty] = useState<Difficulty>(() => {
+    if (saved.difficulty) return saved.difficulty;
+    if (typeof window !== 'undefined' && window.innerWidth <= 680) return 'easy';
+    return 'normal';
+  });
 
   const [phase, setPhase] = useState<RunPhase>('menu');
   const [introOpen, setIntroOpen] = useState(false);
@@ -195,7 +204,8 @@ export function useSolo(userId?: string | null, accountProfile?: Profile) {
     (nextMode: GameMode, stage: number, options: { keepClock?: number } = {}) => {
       clearTimers();
       const seed = randomSeed();
-      const next = buildRound({ mode: nextMode, stage, difficulty, seed }) as Round;
+      const portrait = isPortraitMode();
+      const next = buildRound({ mode: nextMode, stage, difficulty, seed, portrait }) as Round;
 
       const dealt = createSession({
         rows: next.rows,
@@ -248,7 +258,7 @@ export function useSolo(userId?: string | null, accountProfile?: Profile) {
       }
       return next;
     },
-    [bonusAids.hints, bonusAids.shuffles, clearTimers, difficulty, userId],
+    [bonusAids.hints, bonusAids.shuffles, clearTimers, difficulty, isPortraitMode, userId],
   );
 
   const startRun = useCallback(

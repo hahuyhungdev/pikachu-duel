@@ -43,6 +43,18 @@ export function normalizeDifficulty(difficulty) {
   return 'normal';
 }
 
+export function getPreset(difficulty, { portrait = false } = {}) {
+  const base = PRESETS[normalizeDifficulty(difficulty)];
+  if (portrait && base.cols > base.rows) {
+    return {
+      ...base,
+      rows: base.cols,
+      cols: base.rows,
+    };
+  }
+  return base;
+}
+
 /**
  * Calculates next level and escalated difficulty.
  * Easy (Level 1) -> Medium (Level 2) -> Hard (Level 3) -> Escalated clock (-60s)

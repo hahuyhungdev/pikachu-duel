@@ -10,7 +10,7 @@
  * a stage or difficulty into the concrete recipe the session is dealt from.
  */
 
-import { PRESETS, normalizeDifficulty } from '../shared/game/presets.js';
+import { PRESETS, normalizeDifficulty, getPreset } from '../shared/game/presets.js';
 import { FIRST_STAGE, stageConfig } from './stages.js';
 
 const NO_TIME_GAIN = { match: 0, fever: 0 };
@@ -112,7 +112,7 @@ export function dailyStage(date = new Date()) {
  * Treats its argument as read-only and always returns every field the session
  * and the HUD need, so no caller has to know which mode uses the ladder.
  */
-export function buildRound({ mode, stage, difficulty, seed, clock, now } = {}) {
+export function buildRound({ mode, stage, difficulty, seed, clock, now, portrait = false } = {}) {
   const rules = modeRules(mode);
   const when = now instanceof Date ? now : new Date();
   const isDaily = rules.id === 'daily';
@@ -126,9 +126,9 @@ export function buildRound({ mode, stage, difficulty, seed, clock, now } = {}) {
   const effectiveSeed = isDaily ? dailySeed(when) : Number(seed) > 0 ? Number(seed) : 1;
 
   const base = rules.ladder
-    ? stageConfig(effectiveStage)
+    ? stageConfig(effectiveStage, { portrait })
     : (() => {
-        const preset = PRESETS[normalizeDifficulty(difficulty)];
+        const preset = getPreset(difficulty, { portrait });
         return {
           rows: preset.rows,
           cols: preset.cols,

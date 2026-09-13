@@ -55,7 +55,10 @@ export function Board({
   crackingTiles = [],
   onPick,
 }: BoardProps) {
-  const [overview, setOverview] = useState(false);
+  const [overview, setOverview] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth <= 680 && window.innerHeight > window.innerWidth;
+  });
   const padRows = board.rows + 2;
   const padCols = board.cols + 2;
   const unitW = board.cols + 1;

@@ -105,6 +105,7 @@ export const buildRound = (options: {
   difficulty?: string;
   seed?: number;
   now?: Date;
+  portrait?: boolean;
 }): Round => buildRoundJs(options) as Round;
 
 export const modeRules = (mode: GameMode | string): ModeRules => modeRulesJs(mode) as ModeRules;

@@ -46,9 +46,13 @@ function clampStage(stage) {
 }
 
 /** Stages step up a shape every two stages until the ladder runs out of shapes. */
-function shapeFor(stage) {
+function shapeFor(stage, { portrait = false } = {}) {
   const step = Math.min(SHAPES.length - 1, Math.floor((stage - FIRST_STAGE) / 2));
-  return SHAPES[step];
+  const base = SHAPES[step];
+  if (portrait && base.cols > base.rows) {
+    return { rows: base.cols, cols: base.rows };
+  }
+  return base;
 }
 
 /**
@@ -70,9 +74,9 @@ function countFor(stage, from, per, cap) {
  * Everything one Adventure stage needs: board shape, clock, aids, gravity and
  * how many of each special tile to scatter.
  */
-export function stageConfig(stage) {
+export function stageConfig(stage, { portrait = false } = {}) {
   const n = clampStage(stage);
-  const { rows, cols } = shapeFor(n);
+  const { rows, cols } = shapeFor(n, { portrait });
   const pairs = (rows * cols) / 2;
 
   const gravity =

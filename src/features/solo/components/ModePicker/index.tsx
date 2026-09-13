@@ -10,8 +10,8 @@
  * imported from the rules themselves rather than retyped, so they cannot drift.
  */
 
-import { useState } from 'react';
-import { PRESETS } from '../../../../shared/game/presets.js';
+import { useState, useEffect } from 'react';
+import { getPreset } from '../../../../shared/game/presets.js';
 import { FEVER_MULTIPLIER, FEVER_STREAK } from '../../../../game/session.js';
 import { BOMB_PENALTY_SECONDS, CHRONO_FREEZE_SECONDS, CHRONO_SURGE_SECONDS, GOLD_MULTIPLIER } from '../../../../game/marks.js';
 import { GRAVITY_LABELS } from '../../../../game/gravity.js';
@@ -70,6 +70,22 @@ export function ModePicker({
   onOpenLeaderboard,
 }: ModePickerProps) {
   const [guideOpen, setGuideOpen] = useState(false);
+  const [isPortrait, setIsPortrait] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth <= 680 && window.innerHeight > window.innerWidth;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsPortrait(window.innerWidth <= 680 && window.innerHeight > window.innerWidth);
+    };
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+    };
+  }, []);
 
   const selectedCard = modes.find((card) => card.id === selected);
   const bestStage = profile?.adventureBestStage ?? 1;
@@ -197,7 +213,7 @@ export function ModePicker({
           <fieldset className="difficulty">
             <legend className="difficulty__legend">Board size</legend>
             {DIFFICULTIES.map((id) => {
-              const preset = PRESETS[id];
+              const preset = getPreset(id, { portrait: isPortrait });
               return (
                 <label
                   className="difficulty-option"
