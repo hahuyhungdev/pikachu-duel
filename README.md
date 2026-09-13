@@ -1,192 +1,176 @@
 # ⚡ Pikachu Duel
 
-The classic **Pikachu / Onet connect** game, played by two people at once.
-Both players get a byte-identical board, side by side, and the first to clear theirs
-wins.
+The classic **Pikachu / Onet connect** game, reimagined for modern browsers with real-time multiplayer, single-player campaigns, dynamic hazards, and responsive touch controls.
 
-The frontend runs on React 19, TypeScript, and Vite. The deterministic game engine
-and Cloudflare relay remain small framework-free ES modules.
+Both players in a duel receive a byte-identical board deal generated from a shared seed — the first to clear their board wins.
 
-## Play
+---
 
-Hosted on GitHub Pages: **https://hahuyhungdev.github.io/pikachu-duel/**
+## 🎮 Play
 
-Locally:
+- **Hosted on GitHub Pages**: **[https://hahuyhungdev.github.io/pikachu-duel/](https://hahuyhungdev.github.io/pikachu-duel/)**
+- **Local Development**:
+  ```bash
+  npm install
+  npm start          # Vite dev server on http://localhost:4173
+  ```
 
-```bash
-npm install
-npm start          # Vite dev server on http://localhost:4173
-```
+`npm run build` compiles the production bundle into `dist/`.
 
-`npm run build` emits the production app to `dist/`. The Pages workflow in
-`.github/workflows/deploy.yml` tests and builds that artifact on every push to
-`main`.
+---
 
-## Rules
+## 📜 Connection Rules
 
-Pick two matching Pokémon. They clear if a path can join them that
+Pick two matching Pokémon tiles. They clear if and only if an orthogonal path joins them that:
+- Runs strictly horizontally and vertically,
+- Traverses only **empty space** (cleared cells or the padded border around the grid), and
+- Turns **at most twice** (maximum of two 90-degree corners).
 
-- runs only horizontally and vertically,
-- passes only through **empty space** — cleared tiles, or the gap around the outside
-  of the board, and
-- turns **at most twice**.
+Because paths can exit the grid into the padded outer ring, any two identical tiles along the outer perimeter can reach each other.
 
-Because a path may leave the board, any two tiles on the outer ring can always reach
-each other around the edge. Consecutive matches build a streak worth extra points.
+If a board runs out of legal moves at any point, it is automatically and deterministically reshuffled.
 
-Every tile wears the same cream face and warm outline, as in classic Pokémon Onet
-boards. The locally bundled pixel sprites are the only identity cue.
+---
 
-If a board runs out of legal moves it is reshuffled automatically — nobody gets stuck.
+## 🕹️ Game Modes
 
-## Two ways to play
+Pikachu Duel offers 5 distinct game modes suited for competitive duels or solo runs:
 
-**Same computer** — two people, one keyboard, two boards side by side.
+1. **Classic (Duel & Solo)**: The original timed race. One board, one countdown timer ($300\text{s}$ default).
+2. **Adventure Mode**: Climb a progressive ladder of handcrafted stages. Players start with 3 hearts. Board sizes grow from $6 \times 8$ up to $12 \times 16$, clock limits tighten, and new mechanics are introduced sequentially.
+3. **Time Attack**: High-intensity mode starting with only $60\text{s}$ on the clock. Every matched pair adds $+2\text{s}$, and matching during Fever awards $+4\text{s}$.
+4. **Daily Challenge**: A unique daily board identical for every player worldwide, derived deterministically from the calendar date (`YYYY-MM-DD`). One attempt per day.
+5. **Zen Mode**: Relaxed, untimed board clearing with no countdown timer, no heart loss, and unlimited play.
 
-**Online** — one player per device. The host creates a room, shares the link, and
-both players are dealt the same board from a seed the relay picks. You see your
-opponent's score, pairs and progress bar live; you do not see their tiles.
+### Modifiers & Combos
+- **Rush Mode**: Enforces a fast-paced $5\text{s}$ combo window. Trigger Fever mode at $5$ consecutive matches instead of the usual $8$.
+- **Fever State**: Accelerates score with a $2\times$ multiplier and visual spark effects.
 
-Online play needs the relay in `server/` (a Cloudflare Worker). See
-[Deploying the relay](#deploying-the-relay).
+---
 
-## Controls
+## 💣 Special Tiles & Hazards
 
-|          | Player 1 (left) | Player 2 (right) |
-| -------- | --------------- | ---------------- |
-| Move     | `W` `A` `S` `D` | `↑` `←` `↓` `→`  |
-| Pick     | `Space` / `F`   | `Enter`          |
-| Hint     | `Q`             | `,`              |
-| Shuffle  | `E`             | `.`              |
+Certain modes and Adventure stages sprinkle tactical special tiles across the board:
 
-Either board can also just be clicked or tapped, so a single mouse works fine.
+| Special | Effect |
+| ------- | ------ |
+| **Gold** | Scores **$3\times$ points** for the match. |
+| **Ice** | Encased in ice. Takes **two matches** to clear (the first cracks the ice). |
+| **Bomb** | Carries a fuse that decrements with each match made. Detonation costs **$15\text{s}$** of clock time. |
+| **Chrono** | Grants a **$+8\text{s}$ time surge** and **freezes the countdown clock for $5\text{s}$**. |
+| **Gravity** | Board compacts toward edges or center following a clear (8 directional variants: *Fall, Rise, Drift Left, Drift Right, Squeeze In, Split Apart, Squeeze Down, Split Open*). |
 
-## Winning
+---
 
-- **Someone clears their board** → they win immediately.
-- **Clock runs out** → most pairs cleared wins, then highest score, else a draw.
+## ⌨️ Controls & Multi-Device Support
 
-Online, the relay is the authority: it picks the seed and decides the winner, so a
-tampered client cannot declare itself the winner.
+| Action | Player 1 (Left / Solo) | Player 2 (Right) | Mobile / Touch |
+| ------ | ---------------------- | ---------------- | -------------- |
+| **Move** | `W` `A` `S` `D` | `↑` `←` `↓` `→` | Tap tile |
+| **Pick** | `Space` / `F` | `Enter` | Tap tile |
+| **Hint** | `Q` | `,` | Tap Hint button |
+| **Shuffle** | `E` | `.` | Tap Shuffle button |
 
-## Deploying the relay
+### Mobile & Touch Ergonomics
+- **Responsive Layout**: On mobile viewports in portrait mode, boards automatically transpose dimensions (e.g. $9 \times 16$ becomes $16 \times 9$) so tiles remain large and legible.
+- **Viewport Fitting**: Board dimensions scale dynamically with CSS `min()` clamping, preventing vertical scrolling and keeping HUD controls accessible.
 
-The relay is a Cloudflare Worker with one Durable Object per room. It holds the
-room state and the two sockets, and nothing else — all the rules live in
-`server/src/room.js`, which is plain, testable JavaScript.
+---
 
-```bash
-npx wrangler login                 # interactive, once
-npm run server:deploy              # prints https://pikachu-duel-room.<you>.workers.dev
-npm run set-relay https://pikachu-duel-room.<you>.workers.dev
-git commit -am "chore: point at the relay" && git push
-```
+## 🌐 Real-Time Multiplayer
 
-Durable Objects here are SQLite-backed (`new_sqlite_classes`), which is what the
-Workers **free** plan provides. An idle room costs nothing: the sockets hibernate.
+### Two Ways to Duel
+1. **Local Split-Screen**: Two players on a single keyboard or mouse, side by side.
+2. **Online Relay**: Real-time room signaling via WebSocket. Each player sees their own board with live opponent score, pairs cleared, and progress indicators.
 
-The Worker only accepts WebSockets whose `Origin` is `*.github.io` or localhost —
-set `ALLOWED_ORIGINS` in `server/wrangler.jsonc` to add your own domain.
-
-### Testing it locally
+### Deploying the Cloudflare Worker Relay
+The signaling relay runs on Cloudflare Workers using SQLite-backed Durable Objects (`server/src/room.js`):
 
 ```bash
-npm run server:dev                            # relay on 127.0.0.1:8787
-npm run smoke:relay                           # 13 protocol checks over real sockets
-npm start                                     # game on localhost:4173
-npm run bot ROOM01 -- --name "Robo Misty"     # a second player that actually plays
+npx wrangler login                 # authenticate with Cloudflare
+npm run server:deploy              # deploys relay worker
+npm run set-relay https://pikachu-duel-room.<subdomain>.workers.dev
 ```
 
-Then open `http://localhost:4173/?room=ROOM01&server=http://127.0.0.1:8787`.
-
-The relay URL can always be overridden per-visit with `?server=<url>`, which is how
-the local setup above works without touching `config.js`.
-
-## Shareable links
-
-An online invite is just `?room=CODE`. For same-computer games the whole setup can
-be passed in the URL too, so the same deal can be handed to someone else:
-
-```
-?p1=Ash&p2=Misty&board=champion&clock=300&seed=zzz9&auto=1
+### Local Relay Testing
+```bash
+npm run server:dev                            # starts local relay on 127.0.0.1:8787
+npm run smoke:relay                           # runs 13 end-to-end WebSocket checks
+npm run bot ROOM01 -- --name "Robo Misty"     # launches autonomous bot opponent
 ```
 
-| Param     | Values                                     |
-| --------- | ------------------------------------------ |
-| `p1` `p2` | player names (18 chars max)                |
-| `board` / `difficulty` | `easy` 8×10 · `medium` / `normal` 9×16 (default) · `hard` 12×16 |
-| `clock`   | `180` · `300` · `480` · `0` (no clock)     |
-| `seed`    | base-36 seed — same seed, same board       |
-| `auto`    | `1` to skip the setup screen               |
-| `room`    | join an online room by code                |
-| `name`    | your name for an online room (skips the join screen) |
-| `server`  | override the relay URL                     |
+---
 
-## Difficulty & Levels
+## 📁 Project Architecture
 
-You can set the starting difficulty from the setup screen, the online room lobby, or the URL (`?difficulty=medium` or `?board=medium`). **Medium (Classic 9 × 16)** is the default.
-
-| Level / Board | Difficulty | Grid    | Pokémon | Hints | Shuffles | Progression |
-| ------------- | ---------- | ------- | ------- | ----- | -------- | ----------- |
-| Level 1       | Easy (Quick) | 8 × 10  | 16      | 3     | 3        | Next level escalates to Medium |
-| Level 2 (Default) | Medium (Classic) | 9 × 16 | 24 | 2 | 2 | Next level escalates to Hard |
-| Level 3       | Hard (Grand) | 12 × 16 | 24      | 1     | 1        | Next level escalates clock (-60s) |
-| Level 4+      | Escalated  | 12 × 16 | 24      | 1     | 1        | Tighter countdown per round |
-
-When a round finishes, players can click **Next level** to immediately advance to the next level with increased board challenge and fresh seeds.
-
-## Layout
+For an in-depth architectural breakdown, data models, and memory layouts, see [**docs/ARCHITECTURE.md**](docs/ARCHITECTURE.md).
 
 ```
-index.html              Vite document shell
-src/main.tsx            React entry point
-src/App.tsx             app shell and legacy controller adapter
-src/features/duel/      React feature, setup view, and migration boundary
-src/shared/game/        setup contracts shared by the feature and controller
-src/game/               pure, testable game logic (no DOM)
-  rng.js                seeded PRNG — both players get the same deal
-  grid.js               padded grid primitives
-  connect.js            the ≤2-turn path rule, hints, reshuffling
-  board.js              board generation (guaranteed to open with a legal move)
-  session.js            one player's run: selection, scoring, hints, shuffles
-  icons.js              the 24 locally bundled Pokémon sprites
-src/assets/pokemon/     Generation III battle sprite files
-src/ui/                 DOM layer
-  app.js                duel orchestration, clock, keyboard, overlays
-  boardView.js          renders a board, draws the path trace
-  audio.js              WebAudio blips, no assets
-src/net/
-  config.js             relay URL, room codes, invite links
-  client.js             WebSocket client: reconnects, heartbeats, throttling
-src/ui/
-  lobby.js              the room panel: seats, invite link, host controls
-src/styles/             tokens.css + game.css
-server/
-  wrangler.jsonc        Worker + Durable Object config
-  src/room.js           the room rules — pure, and covered by tests
-  src/worker.js         routing and socket plumbing only
-tests/                  node:test suites for src/game and server/src/room.js
-scripts/set-relay.mjs   writes the deployed relay URL into config.js
-scripts/smoke-relay.mjs end-to-end protocol check against a running Worker
-scripts/bot-player.mjs  a headless opponent, for testing online mode
+src/
+├── app/                  # App integration tests and root styles
+├── assets/pokemon/       # 48 Pokémon battle sprites (Generations I-III)
+├── features/
+│   ├── duel/             # 2-player duel feature, arena, and online sync
+│   ├── leaderboard/      # Global rankings, account auth, and progress sync
+│   └── solo/             # Single-player mode picker, HUD, and Adventure ladder
+├── game/                 # Core deterministic game engine (TypeScript)
+│   ├── board.ts          # Board generation and opening move validation
+│   ├── connect.ts        # Pikachu orthogonal pathfinding and reshuffles
+│   ├── gravity.ts        # 8-way directional board compaction
+│   ├── grid.ts           # Flat Int32Array 1D buffer indexing & padding
+│   ├── icons.ts          # Pokémon sprite catalog & icon resolution
+│   ├── marks.ts          # Special hazards (Gold, Ice, Bomb, Chrono)
+│   ├── modes.ts          # Mode definitions & round builder
+│   ├── rng.ts            # Seeded Mulberry32 PRNG & Fisher-Yates shuffle
+│   ├── session.ts        # Game loop, selections, and scoring engine
+│   └── stages.ts         # Adventure ladder stage configurations
+├── net/                  # WebSocket networking client & relay config
+│   ├── client.ts         # Resilient client with backoff & progress throttling
+│   └── config.ts         # Room codes & invite URL formatting
+├── shared/               # Shared components (Board, Tile, Toast) & types
+│   ├── components/       # Common UI primitives
+│   ├── game/             # Shared presets and progress normalization
+│   └── types/            # Central domain models (BoardData, PlayerSession)
+server/                   # Cloudflare Worker + Durable Object relay
+tests/                    # Node.js engine and room protocol test suites
+docs/                     # Engineering documentation and architectural guides
 ```
 
-## Tests
+---
+
+## 🧪 Testing & Verification
+
+The test suite covers deterministic engine deals, pathfinding edge cases, hazard interactions, UI flows, and relay socket protocols:
 
 ```bash
-npm test              # 82 engine/relay tests + React feature tests
-npm run typecheck     # strict TypeScript check
-npm run lint          # ESLint
-npm run build         # production Vite bundle
-npm run smoke:relay   # 13 more against a running Worker
+npm test              # runs core engine tests and Vitest UI tests
+npm run test:core     # 170 Node tests via native TypeScript strip-types
+npm run test:ui       # 97 Vitest component & hook tests
+npm run typecheck     # TypeScript strict validation (tsc -b)
+npm run lint          # ESLint code quality inspection
+npm run build         # Production Vite bundle compilation
+npm run smoke:relay   # 13 WebSocket protocol checks against live relay
 ```
 
-The suites cover the path rule (straight, one-turn, two-turn, routes around the
-board edge, genuinely blocked pairs), deal determinism for a given seed, dead-board
-detection and reshuffling, scoring and streaks, and a full 8×8 playthrough that
-clears all 32 pairs.
+---
 
-For the relay: joining and slot assignment, turning away a third player, reconnects
-keeping their slot, host-only settings and starts, progress relay, first-to-clear
-winning, both-players-timed-out judging, draws, host handover when the host leaves,
-and rematches with a fresh or repeated board.
+## 🔗 Shareable URL Parameters
+
+Duel settings can be preconfigured using query parameters:
+
+| Param | Values | Description |
+| ----- | ------ | ----------- |
+| `room` | `CODE` | Join an online room by code |
+| `name` | string | Auto-fill player display name |
+| `p1`, `p2` | string | Names for local split-screen players |
+| `difficulty` | `easy`, `normal`, `hard` | Starting grid dimensions |
+| `clock` | `0`, `180`, `300`, `480` | Match duration in seconds |
+| `seed` | number / string | Deterministic board deal seed |
+| `auto` | `1` | Skip setup screen and immediately start |
+| `server` | string | Override relay server URL |
+
+---
+
+## 📄 License
+
+MIT © hahuyhungdev
