@@ -6,7 +6,7 @@
  * `useSolo`; this file only decides what is on screen right now.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Board } from '../../shared/components/Board';
 import { Toast } from '../../shared/components/Toast';
 import { ModePicker } from './components/ModePicker';
@@ -15,27 +15,46 @@ import { RunResult } from './components/RunResult';
 import { StageIntro } from './components/StageIntro';
 import { useSolo } from './hooks/useSolo';
 import { useAuth, useAccountProgress, AuthModal, LeaderboardModal } from '../leaderboard';
+import { useAdminMode, AdminStageBar } from '../admin';
 
 export interface SoloGameProps {
   onOpenDuel: () => void;
+  onOpenAdmin?: () => void;
+  initialStage?: number;
 }
 
-export function SoloGame({ onOpenDuel }: SoloGameProps) {
+export function SoloGame({ onOpenDuel, onOpenAdmin, initialStage }: SoloGameProps) {
   const auth = useAuth();
   const progress = useAccountProgress(auth.user);
-  return <SoloSurface key={auth.user?.id ?? 'guest'} onOpenDuel={onOpenDuel} auth={auth} progress={progress} />;
+  return (
+    <SoloSurface
+      key={auth.user?.id ?? 'guest'}
+      onOpenDuel={onOpenDuel}
+      onOpenAdmin={onOpenAdmin}
+      initialStage={initialStage}
+      auth={auth}
+      progress={progress}
+    />
+  );
 }
 
-function SoloSurface({ onOpenDuel, auth, progress }: SoloGameProps & {
+function SoloSurface({ onOpenDuel, onOpenAdmin, initialStage, auth, progress }: SoloGameProps & {
   auth: ReturnType<typeof useAuth>;
   progress: ReturnType<typeof useAccountProgress>;
 }) {
   const { user, login, register, logout } = auth;
   const solo = useSolo(user?.id, progress.profile);
-  const { board, hud, round, summary } = solo;
+  const { board, hud, round, summary, phase, startRun } = solo;
+  const { isAdmin, barVisible } = useAdminMode();
 
   const [authOpen, setAuthOpen] = useState(false);
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
+
+  useEffect(() => {
+    if (initialStage && initialStage >= 1 && phase === 'menu') {
+      startRun(initialStage);
+    }
+  }, [initialStage, phase, startRun]);
 
   const isMenu = solo.phase === 'menu';
   const isResultOpen = solo.phase === 'cleared' || solo.phase === 'failed' || solo.phase === 'over';
@@ -96,6 +115,8 @@ function SoloSurface({ onOpenDuel, auth, progress }: SoloGameProps & {
         onOpenDuel={onOpenDuel}
         onOpenAuth={() => setAuthOpen(true)}
         onOpenLeaderboard={() => setLeaderboardOpen(true)}
+        isAdmin={isAdmin}
+        onOpenAdmin={onOpenAdmin}
       />
 
       {solo.stageIntro && (
@@ -141,6 +162,20 @@ function SoloSurface({ onOpenDuel, auth, progress }: SoloGameProps & {
       />
 
       <Toast message={solo.toast} />
+
+      {barVisible && (
+        <AdminStageBar
+          currentStage={round?.stage ?? solo.profileSummary.adventureBestStage}
+          onJumpStage={(s) => {
+            if (solo.phase === 'menu') {
+              solo.startRun(s);
+            } else {
+              solo.jumpToStage(s);
+            }
+          }}
+          onOpenAdminPanel={onOpenAdmin}
+        />
+      )}
     </div>
   );
 }

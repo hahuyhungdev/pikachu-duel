@@ -79,7 +79,7 @@ it('syncLocalBests submits local stage record', async () => {
   expect(fetchMock).toHaveBeenCalled();
   const call = fetchMock.mock.calls.find((c) => String(c[0]).includes('/api/scores'));
   expect(call).toBeDefined();
-  const body = JSON.parse(call[1].body);
+  const body = JSON.parse(call![1].body);
   expect(body.mode).toBe('adventure');
   expect(body.stage).toBe(16);
   expect(body.score).toBe(25000);

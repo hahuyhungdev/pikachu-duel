@@ -37,6 +37,8 @@ interface ModePickerProps {
   onOpenDuel: () => void;
   onOpenAuth?: () => void;
   onOpenLeaderboard?: () => void;
+  isAdmin?: boolean;
+  onOpenAdmin?: () => void;
 }
 
 const DIFFICULTIES: readonly Difficulty[] = ['easy', 'normal', 'hard'];
@@ -66,6 +68,8 @@ export function ModePicker({
   onOpenDuel,
   onOpenAuth,
   onOpenLeaderboard,
+  isAdmin,
+  onOpenAdmin,
 }: ModePickerProps) {
   const [guideOpen, setGuideOpen] = useState(false);
   const [isPortrait, setIsPortrait] = useState(() => {
@@ -127,6 +131,18 @@ export function ModePicker({
           >
             Bảng xếp hạng
           </button>
+
+          {onOpenAdmin && isAdmin && (
+            <button
+              className="btn btn--admin-open"
+              type="button"
+              data-action="open-admin"
+              onClick={onOpenAdmin}
+              style={{ color: '#fbbf24', borderColor: 'rgba(245, 158, 11, 0.4)' }}
+            >
+              🛠️ Admin
+            </button>
+          )}
         </div>
 
         <p className="save-status" role="status" data-sync={syncStatus}>

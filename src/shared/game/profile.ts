@@ -389,3 +389,42 @@ export function recordRun(result: RunResult, now: Date = new Date(), userId?: st
 
   return { profile, records, previousBest, newUnlocks, dayStreak: profile.dayStreak };
 }
+
+/**
+ * Admin helper: Sets the user's saved best stage for Adventure mode.
+ * Persists immediately to localStorage and notifies active listeners.
+ */
+export function setAdventureBestStage(targetStage: number, userId?: string | null): Profile {
+  const profile = loadProfile(userId);
+  const clamped = Math.max(1, Math.floor(targetStage));
+  profile.modes.adventure.bestStage = clamped;
+  saveProfile(profile, userId);
+  return profile;
+}
+
+/**
+ * Admin helper: Unlocks and awards 3 stars to all Adventure stages up to targetStage.
+ */
+export function unlockStagesUpTo(targetStage: number, userId?: string | null): Profile {
+  const profile = loadProfile(userId);
+  const clamped = Math.max(1, Math.floor(targetStage));
+  profile.modes.adventure.bestStage = Math.max(profile.modes.adventure.bestStage, clamped);
+  for (let s = 1; s <= clamped; s++) {
+    profile.stageStars[String(s)] = 3;
+  }
+  saveProfile(profile, userId);
+  return profile;
+}
+
+/**
+ * Admin helper: Resets Adventure mode progress to stage 1.
+ */
+export function resetAdventureProgress(userId?: string | null): Profile {
+  const profile = loadProfile(userId);
+  profile.modes.adventure.bestStage = 1;
+  profile.modes.adventure.bestScore = 0;
+  profile.stageStars = {};
+  saveProfile(profile, userId);
+  return profile;
+}
+

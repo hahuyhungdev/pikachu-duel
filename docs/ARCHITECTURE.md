@@ -96,13 +96,23 @@ The codebase follows a modular feature-sliced architecture:
 - `src/features/solo/`: Single-player modes, Adventure ladder, Time Attack, Daily puzzle, Run HUD, and stage completion overlays.
 - `src/features/duel/`: Two-player local split-screen cabinet, online multiplayer lobby, and synchronized race logic.
 - `src/features/leaderboard/`: Cloudflare account sync, modal views, and global ranking tables.
+- `src/features/admin/`: Developer & QA Stage Controller, debug tools, and floating in-game stage jumper.
 - `src/shared/`: Common primitives (`Board`, `Tile`, `Toast`), audio synthesizers, and shared domain models.
 
-### 3.2 Performance & Bundle Splitting
+### 3.2 Routing & Navigation (React Router v7)
+- Client-side SPA routing powered by `react-router-dom`:
+  - `/`: Primary single-player mode surface.
+  - `/duel`: Real-time multiplayer split-screen and online lobby.
+  - `/admin`: Interactive Admin Console for setting/inspecting stage configurations, unlocking stages, and test submissions.
+  - `/admin/:stage`: Direct permalink to stage inspector for any stage (e.g. `/admin/16`).
+  - `?stage=X`: Directly starts Adventure mode at stage $X$.
+  - `?admin=true`: Enables the in-game floating stage jumper anywhere.
+
+### 3.3 Performance & Bundle Splitting
 - **Dynamic Code Splitting**: Heavy online duel components (`DuelGame`) are loaded asynchronously via `React.lazy()` with suspense boundaries, trimming initial bundle payload size by $\sim 35\text{ kB}$.
 - **Immutable & Mutable State Boundaries**: While `board.cells` is mutated in-place by the high-performance core engine for speed, container components use clone triggers (`new Int32Array(cells)`) to reliably notify React render cycles without race conditions.
 
-### 3.3 Responsive & Mobile Design
+### 3.4 Responsive & Mobile Design
 - Automatic aspect ratio detection swaps grid rows and columns when running in portrait orientation (e.g., $9 \times 16$ becomes $16 \times 9$), maximizing tile size and touch ergonomics on mobile devices.
 - Dynamic CSS viewport clamping prevents vertical board overflow, keeping HUD indicators and controls accessible without document scrolling.
 
@@ -129,6 +139,7 @@ The codebase follows a modular feature-sliced architecture:
 ## 5. Quality Assurance & Verification
 
 - **Node 24 Core Test Suite**: 170 test cases executing via `node --experimental-strip-types --test "tests/**/*.test.js"`.
-- **UI Test Suite**: 97 Vitest test cases executing component and hook workflows (`src/**/*.test.tsx`).
+- **UI & Router Test Suite**: 107 Vitest test cases executing component, hook, and routing workflows (`src/**/*.test.tsx`).
+- **Total Tests**: 277 automated tests executing in under 5 seconds.
 - **Strict TypeScript**: Full type coverage with `noEmit: true` and zero compiler errors (`npm run typecheck`).
 - **Linting**: Comprehensive ESLint enforcement with zero warnings (`npm run lint`).

@@ -101,15 +101,31 @@ npm run bot ROOM01 -- --name "Robo Misty"     # launches autonomous bot opponent
 
 ---
 
+## 🛠️ Stage Controller & Admin Tools (`/admin`)
+
+Pikachu Duel includes client-side routing via **React Router v7** and an interactive **Stage Controller**:
+
+- **`/admin` Route**: Open the Admin Console to view live configuration recipes for any stage (dimensions, gravity patterns, special hazards, time limits, and 3-star thresholds).
+- **Jump to Any Stage**: Set your saved Adventure stage, unlock stages with 3 stars, or jump directly into any stage (e.g. Stage 16) without grinding.
+- **Direct Route Permalinks**:
+  - `http://localhost:4173/admin`: Full Admin Console & Stage Inspector.
+  - `http://localhost:4173/admin/16`: Direct inspector for Stage 16.
+  - `http://localhost:4173/?stage=16`: Immediately deals and launches Stage 16.
+  - `http://localhost:4173/?admin=true`: Enables the in-game floating stage jumper anywhere.
+- **In-Game Floating Stage Bar**: When admin mode is active, a floating toolbar appears anywhere (during gameplay or on menus) allowing you to jump between stages on the fly (`[ - ] [ 16 ] [ + ] [ Jump ⚡ ]`).
+
+---
+
 ## 📁 Project Architecture
 
 For an in-depth architectural breakdown, data models, and memory layouts, see [**docs/ARCHITECTURE.md**](docs/ARCHITECTURE.md).
 
 ```
 src/
-├── app/                  # App integration tests and root styles
+├── app/                  # App integration tests, router, and root styles
 ├── assets/pokemon/       # 48 Pokémon battle sprites (Generations I-III)
 ├── features/
+│   ├── admin/            # Admin console, live stage inspector, and stage jumper
 │   ├── duel/             # 2-player duel feature, arena, and online sync
 │   ├── leaderboard/      # Global rankings, account auth, and progress sync
 │   └── solo/             # Single-player mode picker, HUD, and Adventure ladder
@@ -143,9 +159,9 @@ docs/                     # Engineering documentation and architectural guides
 The test suite covers deterministic engine deals, pathfinding edge cases, hazard interactions, UI flows, and relay socket protocols:
 
 ```bash
-npm test              # runs core engine tests and Vitest UI tests
+npm test              # runs core engine tests and Vitest UI tests (277 tests total)
 npm run test:core     # 170 Node tests via native TypeScript strip-types
-npm run test:ui       # 97 Vitest component & hook tests
+npm run test:ui       # 107 Vitest component, hook & router tests
 npm run typecheck     # TypeScript strict validation (tsc -b)
 npm run lint          # ESLint code quality inspection
 npm run build         # Production Vite bundle compilation
@@ -154,12 +170,16 @@ npm run smoke:relay   # 13 WebSocket protocol checks against live relay
 
 ---
 
-## 🔗 Shareable URL Parameters
+## 🔗 Shareable URL Parameters & Routes
 
-Duel settings can be preconfigured using query parameters:
+Game and room settings can be preconfigured using routes and query parameters:
 
-| Param | Values | Description |
-| ----- | ------ | ----------- |
+| Param / Route | Values | Description |
+| ------------- | ------ | ----------- |
+| `/admin` | route | Open the full Admin Console & Stage Controller |
+| `/admin/:stage` | route | Direct permalink to inspect and jump to stage (e.g. `/admin/16`) |
+| `stage` | integer | Immediately deal and start Adventure mode at stage $X$ (e.g. `?stage=16`) |
+| `admin` | `1`, `true` | Enable the in-game floating stage jumper anywhere |
 | `room` | `CODE` | Join an online room by code |
 | `name` | string | Auto-fill player display name |
 | `p1`, `p2` | string | Names for local split-screen players |

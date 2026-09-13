@@ -659,6 +659,16 @@ export function useSolo(userId?: string | null, accountProfile?: Profile) {
 
   const beginStage = useCallback(() => setIntroOpen(false), []);
 
+  const jumpToStage = useCallback(
+    (targetStage: number) => {
+      const clamped = Math.max(FIRST_STAGE, Math.floor(targetStage));
+      dealStage(mode, clamped);
+      setPhase('playing');
+      setIntroOpen(false);
+    },
+    [dealStage, mode],
+  );
+
   const toggleSound = useCallback(() => setSoundMuted(setMuted(!isMuted())), []);
 
   const selectMode = useCallback((next: GameMode) => setMode(next), []);
@@ -776,6 +786,7 @@ export function useSolo(userId?: string | null, accountProfile?: Profile) {
     selectMode,
     setDifficulty,
     startRun,
+    jumpToStage,
     beginStage,
     pick,
     hint,

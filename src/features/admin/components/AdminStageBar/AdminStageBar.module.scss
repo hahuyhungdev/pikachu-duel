@@ -1,0 +1,199 @@
+.stageBar {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 9999;
+  background: rgba(20, 24, 33, 0.95);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 16px rgba(245, 158, 11, 0.2);
+  border-radius: 12px;
+  padding: 0.5rem 0.75rem;
+  color: #fff;
+  font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: calc(100vw - 2rem);
+  flex-wrap: wrap;
+  animation: slideUp 0.25s ease-out;
+
+  @media (max-width: 600px) {
+    bottom: 0.5rem;
+    right: 0.5rem;
+    left: 0.5rem;
+    justify-content: space-between;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.minimizedBadge {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 9999;
+  background: rgba(20, 24, 33, 0.9);
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  color: #f59e0b;
+  border-radius: 999px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s ease, background 0.15s ease;
+
+  &:hover {
+    transform: scale(1.05);
+    background: rgba(30, 36, 50, 0.95);
+  }
+}
+
+.titleGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 700;
+  color: #fbbf24;
+  white-space: nowrap;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.stepBtn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+}
+
+.stageInput {
+  width: 52px;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 6px;
+  color: #fbbf24;
+  font-weight: 800;
+  font-size: 0.9rem;
+  text-align: center;
+  outline: none;
+
+  &:focus {
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.25);
+  }
+}
+
+.jumpBtn {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border: none;
+  border-radius: 6px;
+  color: #000;
+  font-weight: 800;
+  padding: 0 0.65rem;
+  height: 28px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: transform 0.1s ease, filter 0.15s ease;
+
+  &:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.quickPills {
+  display: flex;
+  gap: 0.25rem;
+
+  @media (max-width: 680px) {
+    display: none;
+  }
+}
+
+.pillBtn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  border-radius: 4px;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+
+  &:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.18);
+  }
+}
+
+.adminLink {
+  color: #38bdf8;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0 0.35rem;
+  border-radius: 4px;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  height: 28px;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(56, 189, 248, 0.2);
+  }
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0 0.25rem;
+  display: flex;
+  align-items: center;
+
+  &:hover {
+    color: #fff;
+  }
+}
