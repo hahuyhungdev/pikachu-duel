@@ -49,6 +49,7 @@ export interface Round {
   cols: number;
   pairs: number;
   iconCount: number;
+  iconPool?: readonly number[];
   clock: number;
   timed: boolean;
   hearts: number;

@@ -128,3 +128,27 @@ test('describeStage gives the HUD a short human summary of what is different', (
   assert.ok(twisted.length > 0);
   assert.notEqual(twisted, plain, 'a late stage should not read like the first');
 });
+
+test('stages feature diverse Pokémon species right from early stages with mascot Pikachu guaranteed', () => {
+  for (const stage of [1, 2, 3, 5, 10, 16]) {
+    const config = stageConfig(stage);
+    assert.ok(Array.isArray(config.iconPool));
+    assert.equal(config.iconPool.length, config.iconCount);
+    // Pikachu (icon 1) is always present
+    assert.ok(config.iconPool.includes(1), `stage ${stage} missing Pikachu`);
+    // Icons are strictly within valid 1..MAX_ICONS range and unique
+    const unique = new Set(config.iconPool);
+    assert.equal(unique.size, config.iconCount);
+    for (const id of config.iconPool) {
+      assert.ok(id >= 1 && id <= MAX_ICONS);
+    }
+  }
+
+  // Early stages (1 and 2) already feature Pokémon species beyond index 20 (e.g. Charizard, Eevee, Blastoise)
+  const stage1 = stageConfig(1);
+  const stage2 = stageConfig(2);
+  assert.ok(stage1.iconPool.some((id) => id > 20), 'stage 1 should have diverse Pokémon');
+  assert.ok(stage2.iconPool.some((id) => id > 20), 'stage 2 should have diverse Pokémon');
+  // Different stages have different sets of Pokémon
+  assert.notDeepEqual(stage1.iconPool, stage2.iconPool);
+});

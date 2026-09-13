@@ -102,3 +102,18 @@ test('boardFromGrid round-trips through toGrid', () => {
   ];
   assert.deepEqual(toGrid(boardFromGrid(grid)), grid);
 });
+
+test('createBoard respects custom iconPool when dealing tiles', () => {
+  const customPool = [1, 26, 48]; // Pikachu, Charizard, Eevee
+  const board = createBoard({ rows: 4, cols: 4, iconCount: 3, iconPool: customPool, seed: 99 });
+  const counts = new Map();
+  for (const tile of listTiles(board)) counts.set(tile.icon, (counts.get(tile.icon) ?? 0) + 1);
+  assert.equal(counts.size, 3);
+  assert.ok(counts.has(1));
+  assert.ok(counts.has(26));
+  assert.ok(counts.has(48));
+  for (const count of counts.values()) {
+    assert.equal(count % 2, 0);
+  }
+});
+

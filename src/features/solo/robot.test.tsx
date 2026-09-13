@@ -11,7 +11,7 @@ function mockSolverState(overrides: Partial<RobotSolverState> = {}): RobotSolver
   return {
     isRunning: false,
     isSolvingRound: false,
-    speed: 'fast',
+    speed: 'slow',
     autoAdvance: false,
     lastActionReason: null,
     setSpeed: vi.fn(),
@@ -55,9 +55,14 @@ describe('RobotController UI', () => {
     fireEvent.click(stepBtn);
     expect(solver.stepOnce).toHaveBeenCalledTimes(1);
 
-    const turboPill = screen.getByRole('radio', { name: 'Turbo' });
-    fireEvent.click(turboPill);
-    expect(solver.setSpeed).toHaveBeenCalledWith('turbo');
+    const slowPill = screen.getByRole('radio', { name: 'Slow' });
+    expect(slowPill).toBeInTheDocument();
+    expect(slowPill).toHaveAttribute('aria-checked', 'true');
+
+    const normalPill = screen.getByRole('radio', { name: 'Normal' });
+    expect(normalPill).toBeInTheDocument();
+    fireEvent.click(normalPill);
+    expect(solver.setSpeed).toHaveBeenCalledWith('normal');
   });
 
   it('does not render when isOpen is false', () => {

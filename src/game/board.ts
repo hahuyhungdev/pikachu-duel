@@ -35,6 +35,8 @@ export interface CreateBoardOptions {
   iconCount: number;
   /** PRNG seed for deterministic generation. */
   seed: number;
+  /** Optional custom icon palette to pick from instead of sequential 1..iconCount. */
+  iconPool?: readonly number[];
 }
 
 /** Extended Board structure containing generation metadata. */
@@ -54,7 +56,7 @@ const OPENING_RESHUFFLE_STEP = 1;
  * @returns A freshly allocated and dealt `DealtBoard`.
  * @throws Error if rows/cols are non-positive, if tile count is odd, or if iconCount is invalid.
  */
-export function createBoard({ rows, cols, iconCount, seed }: CreateBoardOptions): DealtBoard {
+export function createBoard({ rows, cols, iconCount, seed, iconPool }: CreateBoardOptions): DealtBoard {
   if (!Number.isInteger(rows) || !Number.isInteger(cols) || rows < 1 || cols < 1) {
     throw new Error('createBoard: rows and cols must be positive integers');
   }
@@ -66,9 +68,10 @@ export function createBoard({ rows, cols, iconCount, seed }: CreateBoardOptions)
   }
 
   const pairs = (rows * cols) / 2;
+  const pool = Array.isArray(iconPool) && iconPool.length > 0 ? iconPool : null;
   const deck: number[] = [];
   for (let i = 0; i < pairs; i += 1) {
-    const icon = (i % iconCount) + 1;
+    const icon = pool ? pool[i % pool.length] : (i % iconCount) + 1;
     deck.push(icon, icon);
   }
 
@@ -83,7 +86,7 @@ export function createBoard({ rows, cols, iconCount, seed }: CreateBoardOptions)
   }
   board.remaining = rows * cols;
   board.seed = seed;
-  board.iconCount = iconCount;
+  board.iconCount = pool ? pool.length : iconCount;
 
   // A freshly dealt board may occasionally have zero legal moves; reshuffle until playable.
   if (!findAnyMove(board)) {

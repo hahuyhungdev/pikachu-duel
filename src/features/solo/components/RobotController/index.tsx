@@ -20,10 +20,8 @@ export interface RobotControllerProps {
 }
 
 const SPEED_OPTIONS: { id: RobotSpeed; label: string }[] = [
-  { id: 'smooth', label: 'Smooth' },
-  { id: 'fast', label: 'Fast' },
-  { id: 'turbo', label: 'Turbo' },
-  { id: 'instant', label: 'Instant' },
+  { id: 'slow', label: 'Slow' },
+  { id: 'normal', label: 'Normal' },
 ];
 
 export function RobotController({

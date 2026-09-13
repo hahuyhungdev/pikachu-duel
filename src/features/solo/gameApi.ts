@@ -67,6 +67,7 @@ export interface SessionOptions {
   rows: number;
   cols: number;
   iconCount: number;
+  iconPool?: readonly number[];
   seed: number;
   hints: number;
   shuffles: number;

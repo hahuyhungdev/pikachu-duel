@@ -13,13 +13,11 @@ import type { Session as SoloSession } from '../../../game/session.ts';
 import type { RunPhase } from '../types/solo.types.ts';
 import { findSmartRobotMove } from '../../../game/bot.ts';
 
-export type RobotSpeed = 'smooth' | 'fast' | 'turbo' | 'instant';
+export type RobotSpeed = 'slow' | 'normal';
 
 export const ROBOT_SPEED_DELAYS: Record<RobotSpeed, number> = {
-  smooth: 320,
-  fast: 110,
-  turbo: 25,
-  instant: 0,
+  slow: 320,
+  normal: 120,
 };
 
 export interface UseRobotSolverOptions {
@@ -58,7 +56,7 @@ export function useRobotSolver({
 }: UseRobotSolverOptions): RobotSolverState {
   const [isRunning, setIsRunning] = useState(false);
   const [isSolvingRound, setIsSolvingRound] = useState(false);
-  const [speed, setSpeed] = useState<RobotSpeed>('fast');
+  const [speed, setSpeed] = useState<RobotSpeed>('slow');
   const [autoAdvance, setAutoAdvance] = useState(false);
   const [lastActionReason, setLastActionReason] = useState<string | null>(null);
 
@@ -215,20 +213,8 @@ export function useRobotSolver({
     }
 
     const delay = ROBOT_SPEED_DELAYS[speedRef.current];
-
-    if (delay === 0) {
-      // Instant / burst batch
-      let burstCount = 0;
-      let ok = true;
-      while (ok && burstCount < 6 && curSession.board.remaining > 0) {
-        ok = stepOnce();
-        burstCount += 1;
-      }
-      timerRef.current = window.setTimeout(() => scheduleNextStepRef.current(), 16);
-    } else {
-      stepOnce();
-      timerRef.current = window.setTimeout(() => scheduleNextStepRef.current(), delay);
-    }
+    stepOnce();
+    timerRef.current = window.setTimeout(() => scheduleNextStepRef.current(), delay);
   }, [beginStage, clearTimer, continueRun, stepOnce, stopRobot]);
 
   useEffect(() => {

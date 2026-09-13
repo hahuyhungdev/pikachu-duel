@@ -48,8 +48,8 @@ const SILVER_MULTIPLIER_PER_PAIR = 130;
 const GOLD_MULTIPLIER_PER_PAIR = 190;
 const GOLD_BONUS_PER_STAGE = 40;
 
-const MIN_STAGE_ICONS = 8;
-const BASE_STAGE_ICONS = 10;
+const MIN_STAGE_ICONS = 16;
+const BASE_STAGE_ICONS = 18;
 
 const BASE_STAGE_BOMB_FUSE = 18;
 const MIN_STAGE_BOMB_FUSE = 8;
@@ -67,6 +67,7 @@ export interface StageConfig {
   cols: number;
   pairs: number;
   iconCount: number;
+  iconPool: readonly number[];
   clock: number;
   hints: number;
   shuffles: number;
@@ -77,6 +78,45 @@ export interface StageConfig {
   bomb: number;
   bombFuse: number;
   stars: StageStarThresholds;
+}
+
+/**
+ * Deterministically selects a diverse palette of `count` Pokémon icons for a given stage,
+ * ensuring high species variety right from early stages rather than only the first N icons.
+ */
+export function stageIconPool(stage: number, count: number): number[] {
+  if (count >= MAX_ICONS) {
+    return Array.from({ length: MAX_ICONS }, (_, i) => i + 1);
+  }
+
+  const allIcons = Array.from({ length: MAX_ICONS }, (_, i) => i + 1);
+
+  // Deterministic 32-bit PRNG state seeded from stage index
+  let state = (Math.imul(stage, 0x9e3779b9) ^ 0x85ebca6b) >>> 0;
+  const nextRng = (): number => {
+    state = (Math.imul(state ^ (state >>> 16), 0x45d9f3b)) >>> 0;
+    state = (Math.imul(state ^ (state >>> 15), 0x45d9f3b)) >>> 0;
+    state = (state ^ (state >>> 16)) >>> 0;
+    return (state & 0x7fffffff) / 0x7fffffff;
+  };
+
+  // Fisher-Yates shuffle
+  for (let i = allIcons.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(nextRng() * (i + 1));
+    const tmp = allIcons[i];
+    allIcons[i] = allIcons[j];
+    allIcons[j] = tmp;
+  }
+
+  // Ensure Pikachu (icon 1) is always featured as the game's flagship mascot
+  const pikaIdx = allIcons.indexOf(1);
+  if (pikaIdx >= count) {
+    const swapTarget = Math.floor(nextRng() * count);
+    allIcons[pikaIdx] = allIcons[swapTarget];
+    allIcons[swapTarget] = 1;
+  }
+
+  return allIcons.slice(0, count).sort((a, b) => a - b);
 }
 
 /** Objective description presented to players in the HUD. */
@@ -163,15 +203,19 @@ export function stageConfig(stage: number, { portrait = false }: StageConfigOpti
   const silver = Math.round(pairs * SILVER_MULTIPLIER_PER_PAIR);
   const goldScore = Math.round(pairs * GOLD_MULTIPLIER_PER_PAIR + n * GOLD_BONUS_PER_STAGE);
 
+  const iconCount = Math.min(
+    MAX_ICONS,
+    Math.max(MIN_STAGE_ICONS, Math.min(pairs, BASE_STAGE_ICONS + Math.floor((n - 1) * 1.5)))
+  );
+  const iconPool = stageIconPool(n, iconCount);
+
   return {
     stage: n,
     rows,
     cols,
     pairs,
-    iconCount: Math.min(
-      MAX_ICONS,
-      Math.max(MIN_STAGE_ICONS, Math.min(pairs, BASE_STAGE_ICONS + Math.floor((n - 1) / 3)))
-    ),
+    iconCount,
+    iconPool,
     clock: Math.round(pairs * secondsPerPair(n)),
     hints,
     shuffles,

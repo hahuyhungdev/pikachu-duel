@@ -182,6 +182,7 @@ export interface RoundRecipe {
   cols: number;
   pairs: number;
   iconCount: number;
+  iconPool?: readonly number[];
   clock: number;
   timed: boolean;
   hearts: number;
@@ -266,6 +267,7 @@ export function buildRound({
     cols: base.cols,
     pairs: base.pairs,
     iconCount: base.iconCount,
+    iconPool: 'iconPool' in base ? (base as { iconPool?: readonly number[] }).iconPool : undefined,
     clock: roundClock,
     timed: rules.timed,
     hearts: rules.hearts,

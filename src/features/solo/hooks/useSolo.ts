@@ -211,6 +211,7 @@ export function useSolo(userId?: string | null, accountProfile?: Profile) {
         rows: next.rows,
         cols: next.cols,
         iconCount: next.iconCount,
+        iconPool: next.iconPool,
         seed: next.seed,
         hints: next.hints + bonusAids.hints,
         shuffles: next.shuffles + bonusAids.shuffles,

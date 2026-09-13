@@ -93,6 +93,7 @@ export interface CreateSessionOptions {
   rows?: number;
   cols?: number;
   iconCount?: number;
+  iconPool?: readonly number[];
   seed?: number;
   hints?: number;
   shuffles?: number;
@@ -153,6 +154,7 @@ export function createSession({
   rows = DEFAULT_ROWS,
   cols = DEFAULT_COLS,
   iconCount = DEFAULT_ICON_COUNT,
+  iconPool,
   seed = DEFAULT_SEED,
   hints = DEFAULT_HINTS,
   shuffles = DEFAULT_SHUFFLES,
@@ -169,7 +171,7 @@ export function createSession({
   const session: Session = {
     label,
     seed,
-    board: (board ?? createBoard({ rows, cols, iconCount, seed })) as DealtBoard & BoardWithMarks,
+    board: (board ?? createBoard({ rows, cols, iconCount, iconPool, seed })) as DealtBoard & BoardWithMarks,
     status: 'playing',
     selected: null,
     hint: null,
