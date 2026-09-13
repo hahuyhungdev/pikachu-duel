@@ -101,6 +101,9 @@
 
 @include mobile {
   .hud {
+    height: auto;
+    min-height: 0;
+    max-height: none;
     padding: 10px 12px;
     flex-wrap: nowrap;
     flex-direction: column;

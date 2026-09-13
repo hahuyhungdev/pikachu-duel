@@ -362,11 +362,28 @@ body:has([data-in-game='true']) {
   .board-viewport { max-height: 65dvh; }
   .board { width: 100%; max-width: none; touch-action: pan-x pan-y; }
   .cabinet { padding: 8px; }
-  .run-hud { padding: 12px; flex-wrap: nowrap; }
+  .run-hud {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    padding: 10px 12px;
+    flex-wrap: nowrap;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .run-hud__status {
+    justify-content: space-between;
+    width: 100%;
+  }
+  .run-hud__meters {
+    justify-content: space-between;
+    width: 100%;
+    gap: 8px;
+  }
   .objective { flex-basis: auto; width: 100%; max-width: 100%; }
-  .run-hud__actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-  .run-hud__actions .btn { padding: 8px 4px; font-size: 12px; }
-  .run-hud__meters { gap: 12px; }
+  .run-hud__actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; width: 100%; }
+  .run-hud__actions .btn { padding: 6px 4px; font-size: 11px; min-height: 32px; }
   .modes { grid-template-columns: 1fr; }
   .setup { grid-template-columns: 1fr; }
   .hud { display: flex; flex-wrap: wrap; gap: 12px; }
