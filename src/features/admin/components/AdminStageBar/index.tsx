@@ -18,8 +18,14 @@ export function AdminStageBar({
   onSolveRound,
   isRobotRunning = false,
 }: AdminStageBarProps) {
+  const [prevCurrentStage, setPrevCurrentStage] = useState(currentStage);
   const [targetStage, setTargetStage] = useState<number>(currentStage);
   const [minimized, setMinimized] = useState(false);
+
+  if (prevCurrentStage !== currentStage) {
+    setPrevCurrentStage(currentStage);
+    setTargetStage(currentStage);
+  }
 
   const handleJump = (stageToJump: number) => {
     const clamped = Math.max(1, Math.floor(stageToJump));

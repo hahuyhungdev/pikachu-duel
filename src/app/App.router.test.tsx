@@ -100,4 +100,37 @@ describe('App React Router and Admin Stage Controller', () => {
     // Board should now be in stage 16
     expect(container.querySelector('[data-arena]')).toBeInTheDocument();
   });
+
+  it('navigates directly to /stage/16 and reflects stage in URL', async () => {
+    window.history.replaceState({}, '', '/stage/16');
+    render(<App />);
+
+    const stageLabels = await screen.findAllByText(/Stage 16/i);
+    expect(stageLabels.length).toBeGreaterThan(0);
+    expect(window.location.pathname).toBe('/stage/16');
+  });
+
+  it('hides robot resolve button for regular player accounts', async () => {
+    window.history.replaceState({}, '', '/stage/1');
+    render(<App />);
+
+    // Start stage
+    const startBtn = await screen.findByRole('button', { name: /start stage/i });
+    fireEvent.click(startBtn);
+
+    // Regular players should not see Robot solver button in HUD
+    expect(screen.queryByRole('button', { name: /🤖 Robot/i })).toBeNull();
+  });
+
+  it('shows robot resolve button for admin accounts', async () => {
+    window.history.replaceState({}, '', '/stage/1?admin=true');
+    render(<App />);
+
+    // Start stage
+    const startBtn = await screen.findByRole('button', { name: /start stage/i });
+    fireEvent.click(startBtn);
+
+    // Admin accounts must see the Robot button in HUD
+    expect(await screen.findByRole('button', { name: /🤖 Robot/i })).toBeInTheDocument();
+  });
 });

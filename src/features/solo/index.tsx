@@ -6,7 +6,7 @@
  * `useSolo`; this file only decides what is on screen right now.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Board } from '../../shared/components/Board';
 import { Toast } from '../../shared/components/Toast';
 import { ModePicker } from './components/ModePicker';
@@ -23,9 +23,10 @@ export interface SoloGameProps {
   onOpenDuel: () => void;
   onOpenAdmin?: () => void;
   initialStage?: number;
+  onStageChange?: (stage: number | null) => void;
 }
 
-export function SoloGame({ onOpenDuel, onOpenAdmin, initialStage }: SoloGameProps) {
+export function SoloGame({ onOpenDuel, onOpenAdmin, initialStage, onStageChange }: SoloGameProps) {
   const auth = useAuth();
   const progress = useAccountProgress(auth.user);
   return (
@@ -34,13 +35,14 @@ export function SoloGame({ onOpenDuel, onOpenAdmin, initialStage }: SoloGameProp
       onOpenDuel={onOpenDuel}
       onOpenAdmin={onOpenAdmin}
       initialStage={initialStage}
+      onStageChange={onStageChange}
       auth={auth}
       progress={progress}
     />
   );
 }
 
-function SoloSurface({ onOpenDuel, onOpenAdmin, initialStage, auth, progress }: SoloGameProps & {
+function SoloSurface({ onOpenDuel, onOpenAdmin, initialStage, onStageChange, auth, progress }: SoloGameProps & {
   auth: ReturnType<typeof useAuth>;
   progress: ReturnType<typeof useAccountProgress>;
 }) {
@@ -48,12 +50,13 @@ function SoloSurface({ onOpenDuel, onOpenAdmin, initialStage, auth, progress }: 
   const solo = useSolo(user?.id, progress.profile);
   const { board, hud, round, summary, phase, startRun } = solo;
   const { isAdmin, barVisible } = useAdminMode();
+  const isEffectiveAdmin = isAdmin || user?.username?.toLowerCase() === 'admin';
 
   const [authOpen, setAuthOpen] = useState(false);
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const [robotOpen, setRobotOpen] = useState(() => {
     if (typeof window === 'undefined') return false;
-    return new URLSearchParams(window.location.search).get('robot') === 'true';
+    return isEffectiveAdmin && new URLSearchParams(window.location.search).get('robot') === 'true';
   });
 
   const robot = useRobotSolver({
@@ -66,17 +69,36 @@ function SoloSurface({ onOpenDuel, onOpenAdmin, initialStage, auth, progress }: 
     continueRun: solo.continueRun,
   });
 
+  const lastTargetStageRef = useRef<number | undefined>(undefined);
+
   useEffect(() => {
-    if (initialStage && initialStage >= 1 && phase === 'menu') {
-      startRun(initialStage);
+    if (initialStage && initialStage >= 1 && initialStage !== lastTargetStageRef.current) {
+      lastTargetStageRef.current = initialStage;
+      if (phase === 'menu') {
+        startRun(initialStage);
+      } else if (solo.mode === 'adventure' && round?.stage !== initialStage) {
+        solo.jumpToStage(initialStage);
+      }
     }
-  }, [initialStage, phase, startRun]);
+  }, [initialStage, phase, solo, round?.stage, startRun]);
+
+  // Sync active stage with the URL route
+  useEffect(() => {
+    if (phase !== 'menu' && solo.mode === 'adventure' && round?.stage) {
+      lastTargetStageRef.current = round.stage;
+      onStageChange?.(round.stage);
+    } else if (phase === 'menu') {
+      lastTargetStageRef.current = undefined;
+      onStageChange?.(null);
+    }
+  }, [phase, solo.mode, round?.stage, onStageChange]);
 
   const { introOpen, beginStage } = solo;
   const { solveRound } = robot;
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (!isEffectiveAdmin) return;
     const params = new URLSearchParams(window.location.search);
     if (params.get('robot') === 'true') {
       if (introOpen) {
@@ -89,7 +111,7 @@ function SoloSurface({ onOpenDuel, onOpenAdmin, initialStage, auth, progress }: 
         return () => window.clearTimeout(id);
       }
     }
-  }, [beginStage, introOpen, phase, solveRound]);
+  }, [beginStage, introOpen, isEffectiveAdmin, phase, solveRound]);
 
   const isMenu = solo.phase === 'menu';
   const isResultOpen = solo.phase === 'cleared' || solo.phase === 'failed' || solo.phase === 'over';
@@ -107,7 +129,7 @@ function SoloSurface({ onOpenDuel, onOpenAdmin, initialStage, auth, progress }: 
           onShuffle={solo.shuffle}
           onToggleSound={solo.toggleSound}
           onQuit={solo.changeMode}
-          onToggleRobot={() => setRobotOpen((prev) => !prev)}
+          onToggleRobot={isEffectiveAdmin ? () => setRobotOpen((prev) => !prev) : undefined}
         />
       )}
 
@@ -152,7 +174,7 @@ function SoloSurface({ onOpenDuel, onOpenAdmin, initialStage, auth, progress }: 
         onOpenDuel={onOpenDuel}
         onOpenAuth={() => setAuthOpen(true)}
         onOpenLeaderboard={() => setLeaderboardOpen(true)}
-        isAdmin={isAdmin}
+        isAdmin={isEffectiveAdmin}
         onOpenAdmin={onOpenAdmin}
       />
 
@@ -200,15 +222,17 @@ function SoloSurface({ onOpenDuel, onOpenAdmin, initialStage, auth, progress }: 
 
       <Toast message={solo.toast} />
 
-      <RobotController
-        solver={robot}
-        isOpen={robotOpen}
-        onClose={() => setRobotOpen(false)}
-        canAct={solo.phase === 'playing' || solo.introOpen}
-        stage={round?.stage}
-      />
+      {isEffectiveAdmin && (
+        <RobotController
+          solver={robot}
+          isOpen={robotOpen}
+          onClose={() => setRobotOpen(false)}
+          canAct={solo.phase === 'playing' || solo.introOpen}
+          stage={round?.stage}
+        />
+      )}
 
-      {barVisible && (
+      {barVisible && isEffectiveAdmin && (
         <AdminStageBar
           currentStage={round?.stage ?? solo.profileSummary.adventureBestStage}
           onJumpStage={(s) => {
