@@ -123,8 +123,8 @@ export function RunResult({
           <div className={`${styles.speedStrip} result__time-rewards`} data-reward-strip>
             {summary.globalRank ? (
               <div className={`${styles.rankBadge} time-reward time-reward--rank`}>
-                <span className="time-reward__badge">🏆 Hạng #{summary.globalRank} Toàn Cầu</span>
-                <span className="time-reward__desc">Điểm số đã được đồng bộ lên Bảng Xếp Hạng!</span>
+                <span className="time-reward__badge">🏆 Global Rank #{summary.globalRank}</span>
+                <span className="time-reward__desc">Score synchronized to Leaderboard!</span>
               </div>
             ) : null}
             {summary.timeBonus && summary.timeBonus > 0 ? (
@@ -253,7 +253,7 @@ export function RunResult({
               data-action="open-leaderboard"
               onClick={onOpenLeaderboard}
             >
-              🏆 Bảng Xếp Hạng
+              🏆 Leaderboard
             </button>
           ) : null}
           <button className="btn" type="button" data-action="retry-run" onClick={onRetryRun}>

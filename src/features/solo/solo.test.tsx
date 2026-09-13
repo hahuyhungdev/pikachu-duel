@@ -291,7 +291,7 @@ describe('the solo run', () => {
     const authModal = container.querySelector('[data-overlay="auth-modal"]');
     expect(authModal).not.toBeNull();
 
-    const closeBtn = within(authModal as HTMLElement).getByRole('button', { name: /đóng/i });
+    const closeBtn = within(authModal as HTMLElement).getByRole('button', { name: /close|đóng/i });
     fireEvent.click(closeBtn);
     expect(container.querySelector('[data-overlay="auth-modal"]')).toBeNull();
   });
@@ -307,7 +307,7 @@ describe('the solo run', () => {
     const lbModal = container.querySelector('[data-overlay="leaderboard-modal"]');
     expect(lbModal).not.toBeNull();
 
-    const closeBtn = within(lbModal as HTMLElement).getByRole('button', { name: /^đóng$/i });
+    const closeBtn = within(lbModal as HTMLElement).getByRole('button', { name: /^close$|^đóng$/i });
     fireEvent.click(closeBtn);
     expect(container.querySelector('[data-overlay="leaderboard-modal"]')).toBeNull();
   });
@@ -345,7 +345,7 @@ describe('the solo run', () => {
       />,
     );
 
-    expect(screen.getByText(/Hạng #4 Toàn Cầu/)).toBeInTheDocument();
+    expect(screen.getByText(/global rank #4|hạng #4/i)).toBeInTheDocument();
     const lbBtn = container.querySelector<HTMLButtonElement>('.panel__actions [data-action="open-leaderboard"]');
     expect(lbBtn).not.toBeNull();
     fireEvent.click(lbBtn!);

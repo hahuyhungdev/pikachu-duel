@@ -14,6 +14,8 @@ import { RunHud } from './components/RunHud';
 import { RunResult } from './components/RunResult';
 import { StageIntro } from './components/StageIntro';
 import { useSolo } from './hooks/useSolo';
+import { useRobotSolver } from './hooks/useRobotSolver';
+import { RobotController } from './components/RobotController';
 import { useAuth, useAccountProgress, AuthModal, LeaderboardModal } from '../leaderboard';
 import { useAdminMode, AdminStageBar } from '../admin';
 
@@ -49,12 +51,45 @@ function SoloSurface({ onOpenDuel, onOpenAdmin, initialStage, auth, progress }: 
 
   const [authOpen, setAuthOpen] = useState(false);
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
+  const [robotOpen, setRobotOpen] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).get('robot') === 'true';
+  });
+
+  const robot = useRobotSolver({
+    session: board?.session ?? null,
+    phase,
+    introOpen: solo.introOpen,
+    beginStage: solo.beginStage,
+    pick: solo.pick,
+    shuffle: solo.shuffle,
+    continueRun: solo.continueRun,
+  });
 
   useEffect(() => {
     if (initialStage && initialStage >= 1 && phase === 'menu') {
       startRun(initialStage);
     }
   }, [initialStage, phase, startRun]);
+
+  const { introOpen, beginStage } = solo;
+  const { solveRound } = robot;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('robot') === 'true') {
+      if (introOpen) {
+        beginStage();
+      }
+      if (phase === 'playing') {
+        const id = window.setTimeout(() => {
+          solveRound();
+        }, 30);
+        return () => window.clearTimeout(id);
+      }
+    }
+  }, [beginStage, introOpen, phase, solveRound]);
 
   const isMenu = solo.phase === 'menu';
   const isResultOpen = solo.phase === 'cleared' || solo.phase === 'failed' || solo.phase === 'over';
@@ -67,10 +102,12 @@ function SoloSurface({ onOpenDuel, onOpenAdmin, initialStage, auth, progress }: 
           isMuted={solo.soundMuted}
           canHint={solo.phase === 'playing' && hud.hintsLeft > 0}
           canShuffle={solo.phase === 'playing' && hud.shufflesLeft > 0}
+          isRobotRunning={robot.isRunning || robot.isSolvingRound}
           onHint={solo.hint}
           onShuffle={solo.shuffle}
           onToggleSound={solo.toggleSound}
           onQuit={solo.changeMode}
+          onToggleRobot={() => setRobotOpen((prev) => !prev)}
         />
       )}
 
@@ -163,6 +200,14 @@ function SoloSurface({ onOpenDuel, onOpenAdmin, initialStage, auth, progress }: 
 
       <Toast message={solo.toast} />
 
+      <RobotController
+        solver={robot}
+        isOpen={robotOpen}
+        onClose={() => setRobotOpen(false)}
+        canAct={solo.phase === 'playing' || solo.introOpen}
+        stage={round?.stage}
+      />
+
       {barVisible && (
         <AdminStageBar
           currentStage={round?.stage ?? solo.profileSummary.adventureBestStage}
@@ -174,6 +219,16 @@ function SoloSurface({ onOpenDuel, onOpenAdmin, initialStage, auth, progress }: 
             }
           }}
           onOpenAdminPanel={onOpenAdmin}
+          onSolveRound={() => {
+            if (solo.phase === 'menu') {
+              solo.startRun(round?.stage ?? 1);
+            }
+            if (solo.introOpen) {
+              solo.beginStage();
+            }
+            robot.solveRound();
+          }}
+          isRobotRunning={robot.isRunning || robot.isSolvingRound}
         />
       )}
     </div>

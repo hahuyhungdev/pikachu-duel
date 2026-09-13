@@ -48,7 +48,7 @@ export function AuthModal({
       setPassword('');
       onClose();
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : 'Có lỗi xảy ra, vui lòng thử lại.');
+      setErrorMsg(err instanceof Error ? err.message : 'An error occurred, please try again.');
     } finally {
       setBusy(false);
     }
@@ -60,9 +60,9 @@ export function AuthModal({
         <div className="panel__eyebrow">Pikachu Duel Cloud</div>
         <div className="auth-header">
           <h2 id="auth-title" className="auth-title">
-            {user ? 'Hồ Sơ Huấn Luyện Viên' : tab === 'login' ? 'Đăng Nhập' : 'Tạo Tài Khoản Mới'}
+            {user ? 'Trainer Profile' : tab === 'login' ? 'Log In' : 'Create Account'}
           </h2>
-          <button className="btn btn--close-corner" type="button" onClick={onClose} aria-label="Đóng">
+          <button className="btn btn--close-corner" type="button" onClick={onClose} aria-label="Close">
             ✕
           </button>
         </div>
@@ -78,10 +78,20 @@ export function AuthModal({
               <div className="auth-profile__info">
                 <b className="auth-profile__name">{user.username}</b>
                 <span className="auth-profile__date">
-                  Tham gia: {new Date(user.createdAt).toLocaleDateString('vi-VN')}
+                  Joined: {new Date(user.createdAt).toLocaleDateString('en-US')}
                 </span>
-                <span className="auth-profile__badge" role="status">{syncStatus === 'synced' ? 'Tiến trình đã lưu vào tài khoản' : syncStatus === 'syncing' ? 'Đang đồng bộ tiến trình…' : 'Tiến trình đang lưu trên thiết bị này'}</span>
-                {syncStatus === 'error' && <button type="button" className="btn" onClick={onRetrySync}>Thử đồng bộ lại</button>}
+                <span className="auth-profile__badge" role="status">
+                  {syncStatus === 'synced'
+                    ? 'Progress saved to cloud'
+                    : syncStatus === 'syncing'
+                    ? 'Syncing progress…'
+                    : 'Progress saved on this device'}
+                </span>
+                {syncStatus === 'error' && (
+                  <button type="button" className="btn" onClick={onRetrySync}>
+                    Retry sync
+                  </button>
+                )}
               </div>
             </div>
 
@@ -94,10 +104,10 @@ export function AuthModal({
                   onClose();
                 }}
               >
-                Đăng xuất
+                Log out
               </button>
               <button className="btn btn--primary" type="button" onClick={onClose}>
-                Tiếp tục chơi
+                Continue playing
               </button>
             </div>
           </div>
@@ -114,7 +124,7 @@ export function AuthModal({
                   setErrorMsg(null);
                 }}
               >
-                Đăng nhập
+                Log In
               </button>
               <button
                 className={`auth-tab ${tab === 'register' ? 'auth-tab--active' : ''}`}
@@ -126,7 +136,7 @@ export function AuthModal({
                   setErrorMsg(null);
                 }}
               >
-                Đăng ký tài khoản
+                Register
               </button>
             </div>
 
@@ -139,7 +149,7 @@ export function AuthModal({
 
               {tab === 'register' && (
                 <fieldset className="avatar-picker">
-                  <legend className="avatar-picker__legend">Chọn Pokémon đại diện</legend>
+                  <legend className="avatar-picker__legend">Choose your Pokémon avatar</legend>
                   <div className="avatar-picker__grid">
                     {AVATARS.map((av) => (
                       <button
@@ -157,13 +167,13 @@ export function AuthModal({
               )}
 
               <div className="field">
-                <label htmlFor="auth-username">Tên người chơi (Username)</label>
+                <label htmlFor="auth-username">Username</label>
                 <input
                   id="auth-username"
                   type="text"
                   required
                   autoFocus
-                  placeholder="Ví dụ: AshKetchum"
+                  placeholder="e.g. AshKetchum"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   minLength={2}
@@ -173,12 +183,12 @@ export function AuthModal({
               </div>
 
               <div className="field">
-                <label htmlFor="auth-password">Mật khẩu hoặc Mã PIN</label>
+                <label htmlFor="auth-password">Password or PIN</label>
                 <input
                   id="auth-password"
                   type="password"
                   required
-                  placeholder="Nhập ít nhất 3 ký tự"
+                  placeholder="At least 3 characters"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   minLength={3}
@@ -188,10 +198,10 @@ export function AuthModal({
 
               <div className="panel__actions">
                 <button className="btn btn--primary btn--retry" type="submit" disabled={busy}>
-                  {busy ? 'Đang xử lý...' : tab === 'login' ? 'Đăng nhập ngay' : 'Đăng ký ngay'}
+                  {busy ? 'Please wait...' : tab === 'login' ? 'Log In' : 'Create Account'}
                 </button>
                 <button className="btn" type="button" onClick={onClose}>
-                  Bỏ qua
+                  Cancel
                 </button>
               </div>
             </form>

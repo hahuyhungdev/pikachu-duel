@@ -5,11 +5,19 @@ export interface AdminStageBarProps {
   currentStage?: number;
   onJumpStage: (targetStage: number) => void;
   onOpenAdminPanel?: () => void;
+  onSolveRound?: () => void;
+  isRobotRunning?: boolean;
 }
 
 const QUICK_STAGES = [1, 4, 8, 16, 24, 32];
 
-export function AdminStageBar({ currentStage = 1, onJumpStage, onOpenAdminPanel }: AdminStageBarProps) {
+export function AdminStageBar({
+  currentStage = 1,
+  onJumpStage,
+  onOpenAdminPanel,
+  onSolveRound,
+  isRobotRunning = false,
+}: AdminStageBarProps) {
   const [targetStage, setTargetStage] = useState<number>(currentStage);
   const [minimized, setMinimized] = useState(false);
 
@@ -76,6 +84,18 @@ export function AdminStageBar({ currentStage = 1, onJumpStage, onOpenAdminPanel 
       >
         ⚡ Jump to {targetStage}
       </button>
+
+      {onSolveRound && (
+        <button
+          type="button"
+          className={styles.robotBtn}
+          data-active={isRobotRunning ? 'true' : undefined}
+          onClick={onSolveRound}
+          title="Auto-solve current round with Robot Solver"
+        >
+          {isRobotRunning ? '🤖 Solving...' : '🤖 Solve Round'}
+        </button>
+      )}
 
       <div className={styles.quickPills}>
         {QUICK_STAGES.map((s) => (

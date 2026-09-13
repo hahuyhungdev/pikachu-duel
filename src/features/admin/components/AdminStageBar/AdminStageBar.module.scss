@@ -139,6 +139,32 @@
   }
 }
 
+.robotBtn {
+  background: linear-gradient(135deg, #10b981, #059669);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-weight: 800;
+  padding: 0 0.65rem;
+  height: 28px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: transform 0.1s ease, filter 0.15s ease;
+
+  &:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+  }
+
+  &[data-active='true'] {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+  }
+}
+
 .quickPills {
   display: flex;
   gap: 0.25rem;

@@ -19,8 +19,8 @@ it('uses the signed-in account records instead of another browser profile', () =
   vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Offline'));
   const { container } = render(<SoloGame onOpenDuel={() => {}} />);
   expect(container.querySelector('[data-mode="adventure"] .mode-card__best-value')).toHaveTextContent('7');
-  fireEvent.click(screen.getByRole('button', { name: 'Tài khoản người chơi' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Đăng xuất' }));
+  fireEvent.click(screen.getByRole('button', { name: /player account|tài khoản người chơi/i }));
+  fireEvent.click(screen.getByRole('button', { name: /log out|đăng xuất/i }));
   expect(container.querySelector('[data-mode="adventure"] .mode-card__best-value')).toHaveTextContent('99');
   vi.restoreAllMocks();
 });

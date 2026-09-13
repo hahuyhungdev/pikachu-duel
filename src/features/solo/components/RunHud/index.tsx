@@ -19,10 +19,12 @@ interface RunHudProps {
   isMuted: boolean;
   canHint: boolean;
   canShuffle: boolean;
+  isRobotRunning?: boolean;
   onHint: () => void;
   onShuffle: () => void;
   onToggleSound: () => void;
   onQuit: () => void;
+  onToggleRobot?: () => void;
 }
 
 /** Only Adventure climbs numbered stages; elsewhere "Stage 1" is noise. */
@@ -40,10 +42,12 @@ export function RunHud({
   isMuted,
   canHint,
   canShuffle,
+  isRobotRunning = false,
   onHint,
   onShuffle,
   onToggleSound,
   onQuit,
+  onToggleRobot,
 }: RunHudProps) {
   const isLadder = LADDER_MODES.has(hud.mode);
   const stageName = isLadder ? `Stage ${hud.stage}` : hud.modeLabel;
@@ -171,6 +175,18 @@ export function RunHud({
         >
           {isMuted ? 'Sound off' : 'Sound on'}
         </button>
+        {onToggleRobot && (
+          <button
+            className="btn"
+            type="button"
+            data-action="robot"
+            data-active={isRobotRunning ? 'true' : undefined}
+            onClick={onToggleRobot}
+            title="Open Robot Auto Solver"
+          >
+            {isRobotRunning ? '🤖 Solving' : '🤖 Robot'}
+          </button>
+        )}
         <button className="btn" type="button" data-action="quit" onClick={onQuit}>
           Quit
         </button>

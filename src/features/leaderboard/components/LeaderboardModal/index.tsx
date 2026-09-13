@@ -9,10 +9,10 @@ interface LeaderboardModalProps {
 }
 
 const MODES = [
-  { id: 'adventure', label: '🌟 Thám hiểm' },
-  { id: 'timeattack', label: '⚡ Tốc độ' },
-  { id: 'classic', label: '🎯 Cổ điển' },
-  { id: 'daily', label: '📅 Thử thách ngày' },
+  { id: 'adventure', label: '🌟 Adventure' },
+  { id: 'timeattack', label: '⚡ Time Attack' },
+  { id: 'classic', label: '🎯 Classic' },
+  { id: 'daily', label: '📅 Daily' },
 ];
 
 export function LeaderboardModal({ isOpen, onClose, defaultMode = 'adventure' }: LeaderboardModalProps) {
@@ -59,9 +59,9 @@ export function LeaderboardModal({ isOpen, onClose, defaultMode = 'adventure' }:
         <div className="panel__eyebrow">Pikachu Duel Cloud</div>
         <div className="leaderboard-header">
           <h2 id="lb-title" className="leaderboard-title">
-            🏆 Bảng Xếp Hạng Toàn Cầu
+            🏆 Global Leaderboard
           </h2>
-          <button className="btn btn--close-corner" type="button" onClick={onClose} aria-label="Đóng">
+          <button className="btn btn--close-corner" type="button" onClick={onClose} aria-label="Close">
             ✕
           </button>
         </div>
@@ -84,7 +84,7 @@ export function LeaderboardModal({ isOpen, onClose, defaultMode = 'adventure' }:
 
         {loading ? (
           <div className="leaderboard-loading">
-            <span className="spinner" /> Đang tải bảng xếp hạng...
+            <span className="spinner" /> Loading leaderboard...
           </div>
         ) : (
           <div className="leaderboard-body">
@@ -98,10 +98,10 @@ export function LeaderboardModal({ isOpen, onClose, defaultMode = 'adventure' }:
                     <img className="podium-avatar" src={avatarSrc(top3[1].avatar)} alt="" />
                     <b className="podium-name">{top3[1].username}</b>
                     <span className="podium-score">
-                      {top3[1].score.toLocaleString('vi-VN')} pts
+                      {top3[1].score.toLocaleString('en-US')} pts
                     </span>
                     {activeMode === 'adventure' && (
-                      <span className="podium-stage">Màn {top3[1].stage}</span>
+                      <span className="podium-stage">Stage {top3[1].stage}</span>
                     )}
                   </div>
                 ) : <div className="podium-col" />}
@@ -113,10 +113,10 @@ export function LeaderboardModal({ isOpen, onClose, defaultMode = 'adventure' }:
                     <img className="podium-avatar" src={avatarSrc(top3[0].avatar)} alt="" />
                     <b className="podium-name">{top3[0].username}</b>
                     <span className="podium-score">
-                      {top3[0].score.toLocaleString('vi-VN')} pts
+                      {top3[0].score.toLocaleString('en-US')} pts
                     </span>
                     {activeMode === 'adventure' && (
-                      <span className="podium-stage">Màn {top3[0].stage}</span>
+                      <span className="podium-stage">Stage {top3[0].stage}</span>
                     )}
                   </div>
                 )}
@@ -128,10 +128,10 @@ export function LeaderboardModal({ isOpen, onClose, defaultMode = 'adventure' }:
                     <img className="podium-avatar" src={avatarSrc(top3[2].avatar)} alt="" />
                     <b className="podium-name">{top3[2].username}</b>
                     <span className="podium-score">
-                      {top3[2].score.toLocaleString('vi-VN')} pts
+                      {top3[2].score.toLocaleString('en-US')} pts
                     </span>
                     {activeMode === 'adventure' && (
-                      <span className="podium-stage">Màn {top3[2].stage}</span>
+                      <span className="podium-stage">Stage {top3[2].stage}</span>
                     )}
                   </div>
                 ) : <div className="podium-col" />}
@@ -144,10 +144,10 @@ export function LeaderboardModal({ isOpen, onClose, defaultMode = 'adventure' }:
                 <table className="leaderboard-table">
                   <thead>
                     <tr>
-                      <th className="th-rank">Hạng</th>
-                      <th className="th-user">Người chơi</th>
-                      {activeMode === 'adventure' && <th className="th-stage">Màn</th>}
-                      <th className="th-score">Điểm số</th>
+                      <th className="th-rank">Rank</th>
+                      <th className="th-user">Player</th>
+                      {activeMode === 'adventure' && <th className="th-stage">Stage</th>}
+                      <th className="th-score">Score</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -159,30 +159,30 @@ export function LeaderboardModal({ isOpen, onClose, defaultMode = 'adventure' }:
                           <span className="lb-user-name">{entry.username}</span>
                         </td>
                         {activeMode === 'adventure' && (
-                          <td className="td-stage">Màn {entry.stage}</td>
+                          <td className="td-stage">Stage {entry.stage}</td>
                         )}
-                        <td className="td-score">{entry.score.toLocaleString('vi-VN')}</td>
+                        <td className="td-score">{entry.score.toLocaleString('en-US')}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             ) : entries.length === 0 ? (
-              <p className="leaderboard-empty">Chưa có ai ghi điểm ở chế độ này. Hãy là người đầu tiên!</p>
+              <p className="leaderboard-empty">No scores recorded yet for this mode. Be the first!</p>
             ) : null}
 
             {/* Pinned user rank if logged in */}
             {userEntry && (
               <div className="leaderboard-sticky-user">
-                <span className="sticky-user__rank">Hạng #{userEntry.rank}</span>
+                <span className="sticky-user__rank">Rank #{userEntry.rank}</span>
                 <img className="sticky-user__avatar" src={avatarSrc(userEntry.avatar)} alt="" />
                 <span className="sticky-user__name">
-                  {userEntry.username.includes('Bạn') ? userEntry.username : `${userEntry.username} (Bạn)`}
+                  {userEntry.username.includes('You') ? userEntry.username : `${userEntry.username} (You)`}
                 </span>
                 {activeMode === 'adventure' && (
-                  <span className="sticky-user__stage">Màn {userEntry.stage}</span>
+                  <span className="sticky-user__stage">Stage {userEntry.stage}</span>
                 )}
-                <span className="sticky-user__score">{userEntry.score.toLocaleString('vi-VN')} pts</span>
+                <span className="sticky-user__score">{userEntry.score.toLocaleString('en-US')} pts</span>
               </div>
             )}
           </div>
@@ -190,7 +190,7 @@ export function LeaderboardModal({ isOpen, onClose, defaultMode = 'adventure' }:
 
         <div className="panel__actions">
           <button className="btn btn--primary" type="button" onClick={onClose}>
-            Đóng bảng xếp hạng
+            Close Leaderboard
           </button>
         </div>
       </div>

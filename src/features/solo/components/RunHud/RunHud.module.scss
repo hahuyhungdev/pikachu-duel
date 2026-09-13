@@ -81,6 +81,13 @@
     min-height: 30px;
     padding: 4px 8px;
     font-size: 12px;
+
+    &[data-action='robot'][data-active='true'] {
+      background: #15803d;
+      color: #fff;
+      border-color: #16a34a;
+      box-shadow: 0 0 8px rgba(22, 163, 74, 0.4);
+    }
   }
 }
 
@@ -168,16 +175,19 @@
 
   .actions {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 4px;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 3px;
     width: 100%;
 
     .btn {
       min-height: 32px;
-      padding: 4px 2px;
-      font-size: 11px;
+      padding: 4px 1px;
+      font-size: 10px;
       font-weight: 700;
       border-radius: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
   }
 }

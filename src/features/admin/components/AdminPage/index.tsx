@@ -236,6 +236,16 @@ export function AdminPage() {
             </button>
             <button
               type="button"
+              className={`${styles.actionBtn} ${styles['actionBtn--robot']}`}
+              onClick={() => {
+                setAdventureBestStage(selectedStage);
+                navigate(`/?stage=${selectedStage}&robot=true`);
+              }}
+            >
+              🤖 Launch with Robot Auto-Solve
+            </button>
+            <button
+              type="button"
               className={`${styles.actionBtn} ${styles['actionBtn--secondary']}`}
               onClick={handleSetProfileStage}
             >

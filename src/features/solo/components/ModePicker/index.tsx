@@ -107,19 +107,16 @@ export function ModePicker({
             type="button"
             data-action="open-auth"
             onClick={onOpenAuth}
-            aria-label="Tài khoản người chơi"
+            aria-label="Player account"
+            title={user ? `Trainer: ${user.username}` : 'Log in to save cloud progress'}
           >
             {user ? (
               <>
-                <img
-                  src={avatarSrc(user.avatar)}
-                  alt=""
-                  className="btn--user-avatar"
-                />
-                <span>{user.username}</span>
+                <img className="user-profile-btn__avatar" src={avatarSrc(user.avatar)} alt="" />
+                <span className="user-profile-btn__name">{user.username}</span>
               </>
             ) : (
-              <span>Đăng nhập / Hồ sơ</span>
+              <span>Log In / Profile</span>
             )}
           </button>
 
@@ -129,7 +126,7 @@ export function ModePicker({
             data-action="open-leaderboard"
             onClick={onOpenLeaderboard}
           >
-            Bảng xếp hạng
+            Leaderboard
           </button>
 
           {onOpenAdmin && isAdmin && (

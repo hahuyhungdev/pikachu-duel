@@ -101,6 +101,29 @@ npm run bot ROOM01 -- --name "Robo Misty"     # launches autonomous bot opponent
 
 ---
 
+## 🤖 Robot Solver & Auto-Play
+
+Pikachu Duel includes an autonomous, tactical **Robot Solver** (`src/game/bot.ts`, `useRobotSolver.ts`) designed to analyze complex boards and auto-resolve rounds:
+
+- **Tactical Hazard Prioritization**:
+  1. **Emergency Bomb Defusal**: Prioritizes lowest-fuse ticking bombs to protect the clock from 15s detonation penalties.
+  2. **Chrono Harvesting**: Connects Chrono tiles to trigger $+8\text{s}$ time surges and 5-second clock freezes.
+  3. **Gold Multipliers**: Sweeps Gold tiles during high streaks for $3\times$ score surges.
+  4. **Orthogonal Routing**: Solves standard connections with automatic deadlock detection and reshuffling.
+- **Round Solving (`⚡ Solve Round`)**: Automatically clears the entire active stage (e.g. Stage 16), triggering combo climbs, score animations, and stage advancement.
+- **Speed Profiles**:
+  - `Smooth` (~320ms): Leisurely cadence showcasing matching paths and audio feedback.
+  - `Fast` (~110ms): Quick tactical clears.
+  - `Turbo` (~25ms): Rapid automated clearing.
+  - `Instant` (Batch): Real-time burst solving in fractions of a second.
+- **Accessing the Robot**:
+  - In the in-game HUD via the `[🤖 Robot]` button.
+  - On the floating Admin Bar via `[🤖 Solve Round]`.
+  - In the Admin Console (`/admin`) via `[🤖 Launch with Robot Auto-Solve]`.
+  - Via URL parameter: `http://localhost:4173/?stage=16&robot=true`.
+
+---
+
 ## 🛠️ Stage Controller & Admin Tools (`/admin`)
 
 Pikachu Duel includes client-side routing via **React Router v7** and an interactive **Stage Controller**:
@@ -159,9 +182,9 @@ docs/                     # Engineering documentation and architectural guides
 The test suite covers deterministic engine deals, pathfinding edge cases, hazard interactions, UI flows, and relay socket protocols:
 
 ```bash
-npm test              # runs core engine tests and Vitest UI tests (277 tests total)
-npm run test:core     # 170 Node tests via native TypeScript strip-types
-npm run test:ui       # 107 Vitest component, hook & router tests
+npm test              # runs core engine tests and Vitest UI tests (285 tests total)
+npm run test:core     # 173 Node tests via native TypeScript strip-types
+npm run test:ui       # 112 Vitest component, hook & router tests
 npm run typecheck     # TypeScript strict validation (tsc -b)
 npm run lint          # ESLint code quality inspection
 npm run build         # Production Vite bundle compilation
