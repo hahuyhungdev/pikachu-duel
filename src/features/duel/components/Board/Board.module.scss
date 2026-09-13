@@ -5,7 +5,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   min-width: 0;
   width: 100%;
   height: 100%;
@@ -88,7 +88,8 @@
 }
 
 .wrap {
-  width: 100%;
+  min-width: 100%;
+  width: max-content;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -103,10 +104,15 @@
   aspect-ratio: var(--unit-w) / var(--unit-h);
   grid-template-columns: 0.5fr repeat(var(--cols), 1fr) 0.5fr;
   grid-template-rows: 0.5fr repeat(var(--rows), 1fr) 0.5fr;
-  gap: 1px;
+  gap: 1.5px;
   background-color: var(--felt);
-  border: 0;
-  border-radius: 8px;
+  background-image: radial-gradient(ellipse at 50% 40%, #1a3c27 0%, #0d2014 100%);
+  border: 2px solid #08150d;
+  border-radius: 10px;
+  box-shadow:
+    inset 0 3px 10px rgba(0, 0, 0, 0.7),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 4px 16px rgba(0, 0, 0, 0.25);
   touch-action: manipulation;
   max-width: min(calc((100dvh - 5rem) * var(--unit-w) / var(--unit-h) * var(--zoom-scale, 1)), calc(96vw * var(--zoom-scale, 1)));
   width: min(calc((100dvh - 5rem) * var(--unit-w) / var(--unit-h) * var(--zoom-scale, 1)), calc(96vw * var(--zoom-scale, 1)));
@@ -121,29 +127,72 @@
   font-size: min(calc(68cqw / var(--unit-w)), calc(68cqh / var(--unit-h)));
   line-height: 1;
   padding: 0;
-  border: 1px solid #b4bba5;
+  border: 1px solid #283618;
   border-radius: 4px;
-  background: #fffdf0;
-  box-shadow: 0 1px 0 #aab197;
+  background: linear-gradient(180deg, #ffffff 0%, #fbf9f3 50%, #eee8dc 100%);
+  box-shadow:
+    inset 1px 1px 0 #ffffff,
+    inset -1px -1px 0 #ded7c4,
+    0 2px 0 #1b2612,
+    0 2px 4px rgba(0, 0, 0, 0.35);
   cursor: pointer;
   -webkit-user-select: none;
   user-select: none;
-  transition: transform 0.1s ease, background-color 0.1s ease;
+  transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.08s ease;
+
+  @media (hover: hover) {
+    &:hover:not([data-empty='true']):not([data-selected='true']) {
+      background: linear-gradient(180deg, #ffffff 0%, #fffef8 100%);
+      box-shadow:
+        inset 1px 1px 0 #ffffff,
+        inset -1px -1px 0 #ded7c4,
+        0 2px 0 #1b2612,
+        0 0 6px rgba(255, 255, 255, 0.6);
+      transform: translateY(-1px);
+    }
+  }
+
+  &:active:not([data-empty='true']) {
+    transform: translateY(1px);
+    box-shadow:
+      inset 0 1px 2px rgba(0, 0, 0, 0.25),
+      0 1px 0 #1b2612;
+  }
 
   &[data-empty='true'] {
     box-shadow: none;
     background: transparent;
     border-color: transparent;
+    cursor: default;
+    pointer-events: none;
+  }
+
+  &[data-selected='true'] {
+    background: linear-gradient(180deg, #fffbeb 0%, #fef08a 40%, #facc15 100%) !important;
+    border-color: #a16207 !important;
+    box-shadow:
+      0 0 0 2.5px #eab308,
+      0 0 14px rgba(234, 179, 8, 0.9),
+      inset 1px 1px 0 #ffffff,
+      0 3px 6px rgba(0, 0, 0, 0.4) !important;
+    transform: translateY(-2px) scale(1.06);
+    z-index: 10;
+  }
+
+  &[data-hint='true'] {
+    border-color: #0891b2 !important;
+    animation: hint-glow 500ms ease-in-out infinite alternate !important;
+    z-index: 9;
   }
 }
 
 .tileSprite {
-  width: 92%;
-  height: 92%;
+  width: 90%;
+  height: 90%;
   object-fit: contain;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  filter: saturate(1.08) contrast(1.04);
+  filter: contrast(1.14) saturate(1.2) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.26));
   pointer-events: none;
 }
 
@@ -242,10 +291,15 @@
     aspect-ratio: var(--unit-w) / var(--unit-h);
     grid-template-columns: 0.5fr repeat(var(--cols), 1fr) 0.5fr;
     grid-template-rows: 0.5fr repeat(var(--rows), 1fr) 0.5fr;
-    gap: 1px;
+    gap: 1.5px;
     background-color: var(--felt);
-    border: 0;
-    border-radius: 8px;
+    background-image: radial-gradient(ellipse at 50% 40%, #1a3c27 0%, #0d2014 100%);
+    border: 2px solid #08150d;
+    border-radius: 10px;
+    box-shadow:
+      inset 0 3px 10px rgba(0, 0, 0, 0.7),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+      0 4px 16px rgba(0, 0, 0, 0.25);
     touch-action: manipulation;
     max-width: min(calc((100dvh - 5rem) * var(--unit-w) / var(--unit-h) * var(--zoom-scale, 1)), calc(96vw * var(--zoom-scale, 1)));
     width: min(calc((100dvh - 5rem) * var(--unit-w) / var(--unit-h) * var(--zoom-scale, 1)), calc(96vw * var(--zoom-scale, 1)));
@@ -262,18 +316,50 @@
 
 // Mobile responsive adaptation
 @include mobile {
+  .controls,
+  :global(.board-controls) {
+    margin-bottom: 4px;
+    gap: 6px;
+    width: 100%;
+    font-size: 11px;
+  }
+
+  .zoomBtn,
+  :global(.zoom-btn) {
+    min-height: 28px;
+    min-width: 28px;
+    font-size: 12px;
+  }
+
+  .boardToggle,
+  :global(.board-toggle) {
+    min-height: 28px;
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+
   .stage:not([data-overview='true']),
   :global(.board-stage:not([data-overview='true'])) {
     .viewport,
     :global(.board-viewport) {
       overflow-x: auto;
-      max-height: 65dvh;
+      max-height: calc(100dvh - 6.5rem);
+      display: flex;
+      justify-content: flex-start;
+    }
+    .wrap,
+    :global(.board-wrap) {
+      justify-content: flex-start;
+      padding-inline: 4px;
+      min-width: 100%;
+      width: max-content;
     }
     .board,
     :global(.board) {
       width: var(--board-min);
       min-inline-size: var(--board-min);
       touch-action: pan-x pan-y;
+      margin: 0;
     }
   }
 
@@ -282,11 +368,24 @@
     .viewport,
     :global(.board-viewport) {
       overflow: hidden;
+      max-height: calc(100dvh - 6.5rem);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .wrap,
+    :global(.board-wrap) {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
     }
     .board,
     :global(.board) {
-      width: 100%;
+      width: min(calc((100dvh - 6.5rem) * var(--unit-w) / var(--unit-h) * var(--zoom-scale, 1)), calc((100vw - 8px) * var(--zoom-scale, 1)));
+      max-width: min(calc((100dvh - 6.5rem) * var(--unit-w) / var(--unit-h) * var(--zoom-scale, 1)), calc((100vw - 8px) * var(--zoom-scale, 1)));
       min-inline-size: 0;
+      margin: auto;
     }
   }
 }

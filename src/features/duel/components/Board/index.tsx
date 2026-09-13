@@ -114,7 +114,6 @@ export function Board({
   };
 
   const zoomIn = () => {
-    setOverview(false);
     setZoom((z) => Math.min(1.5, Number((z + 0.1).toFixed(1))));
   };
   const zoomOut = () => {
