@@ -24,25 +24,29 @@ export const INTRODUCES = {
 
 /** Canonical board grid shapes on the progression ladder. */
 const SHAPES: readonly { readonly rows: number; readonly cols: number }[] = [
-  { rows: 6, cols: 8 },
-  { rows: 6, cols: 10 },
-  { rows: 8, cols: 10 },
-  { rows: 8, cols: 12 },
-  { rows: 8, cols: 14 },
-  { rows: 9, cols: 16 },
-  { rows: 10, cols: 16 },
-  { rows: 12, cols: 16 },
+  { rows: 6, cols: 8 },   // Step 0: 24 pairs (48 cells) - Stages 1-4
+  { rows: 6, cols: 10 },  // Step 1: 30 pairs (60 cells) - Stages 5-10
+  { rows: 8, cols: 10 },  // Step 2: 40 pairs (80 cells) - Stages 11-18
+  { rows: 8, cols: 12 },  // Step 3: 48 pairs (96 cells) - Stages 19-30
+  { rows: 8, cols: 14 },  // Step 4: 56 pairs (112 cells) - Stages 31-50
+  { rows: 9, cols: 16 },  // Step 5: 72 pairs (144 cells) - Stages 51-75
+  { rows: 10, cols: 16 }, // Step 6: 80 pairs (160 cells) - Stages 76-90
+  { rows: 12, cols: 16 }, // Step 7: 96 pairs (192 cells) - Stages 91-100+
 ] as const;
+
+/** Stage index thresholds where board dimensions expand. */
+const STAGE_SHAPE_THRESHOLDS: readonly number[] = [1, 5, 11, 19, 31, 51, 76, 91] as const;
 
 /** Gravity variants in rotational order on the ladder. */
 const GRAVITY_ROTATION: readonly GravityMode[] = GRAVITY_MODES.filter(
   (mode): mode is Exclude<GravityMode, 'none'> => mode !== 'none'
 );
 
-/** Progression formula constants - balanced for human progression up to stage 100 */
-const BASE_SECONDS_PER_PAIR = 6.5;
-const STAGE_SECONDS_DECREMENT = 0.032;
-const MIN_SECONDS_PER_PAIR = 3.5;
+/** Progression formula constants - balanced for crisp, engaging rounds up to stage 100 */
+const BASE_SECONDS_PER_PAIR = 5.2;
+const STAGE_SECONDS_DECREMENT = 0.024;
+const MIN_SECONDS_PER_PAIR = 2.8;
+const MAX_STAGE_CLOCK = 270; // 4.5 minutes maximum cap to prevent fatigue
 
 const SILVER_MULTIPLIER_PER_PAIR = 130;
 const GOLD_MULTIPLIER_PER_PAIR = 190;
@@ -150,7 +154,13 @@ function clampStage(stage: unknown): number {
  * swapping rows/cols if portrait is enabled.
  */
 function shapeFor(stage: number, { portrait = false }: StageConfigOptions = {}): { rows: number; cols: number } {
-  const step = Math.min(SHAPES.length - 1, Math.floor((stage - FIRST_STAGE) / 2));
+  let step = 0;
+  for (let i = STAGE_SHAPE_THRESHOLDS.length - 1; i >= 0; i -= 1) {
+    if (stage >= STAGE_SHAPE_THRESHOLDS[i]) {
+      step = i;
+      break;
+    }
+  }
   const base = SHAPES[step];
   if (portrait && base.cols > base.rows) {
     return { rows: base.cols, cols: base.rows };
@@ -216,7 +226,7 @@ export function stageConfig(stage: number, { portrait = false }: StageConfigOpti
     pairs,
     iconCount,
     iconPool,
-    clock: Math.round(pairs * secondsPerPair(n)),
+    clock: Math.min(MAX_STAGE_CLOCK, Math.round(pairs * secondsPerPair(n))),
     hints,
     shuffles,
     gravity,
