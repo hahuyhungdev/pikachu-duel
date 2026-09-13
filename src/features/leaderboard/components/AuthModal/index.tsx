@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { AVATARS, avatarSrc } from '../avatars';
-import type { User } from '../leaderboardApi';
-import type { ProgressSyncStatus } from '../hooks/useAccountProgress';
+import { AVATARS, avatarSrc } from '../../avatars';
+import type { User } from '../../leaderboardApi';
+import type { ProgressSyncStatus } from '../../hooks/useAccountProgress';
 
 interface AuthModalProps {
   isOpen: boolean;

@@ -36,7 +36,7 @@ import {
 } from '../gameApi';
 import { isMuted, setMuted, sfx } from '../../../shared/audio/sfx';
 import { loadProfile, saveProfile, recordRun, type Profile } from '../../../shared/game/profile';
-import { submitScore } from '../../leaderboard/leaderboardApi';
+import { submitScore } from '../../leaderboard';
 import type {
   Difficulty,
   GameMode,

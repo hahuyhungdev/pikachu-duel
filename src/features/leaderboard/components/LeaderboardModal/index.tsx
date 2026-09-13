@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { avatarSrc } from '../avatars';
-import { fetchLeaderboard, type LeaderboardEntry } from '../leaderboardApi';
+import { avatarSrc } from '../../avatars';
+import { fetchLeaderboard, type LeaderboardEntry } from '../../leaderboardApi';
 
 interface LeaderboardModalProps {
   isOpen: boolean;

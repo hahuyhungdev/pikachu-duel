@@ -232,7 +232,7 @@ export function StartOverlay({
             </label>
           </div>
           {(roomError || onlineNote) && (
-            <p className="note" data-online-note style={{ color: roomError ? 'var(--alarm)' : undefined, fontWeight: roomError ? 600 : undefined }}>
+            <p className="note" data-online-note data-error={roomError ? 'true' : undefined}>
               {roomError || onlineNote}
             </p>
           )}

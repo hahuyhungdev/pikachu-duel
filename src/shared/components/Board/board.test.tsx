@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
-import { createBoard } from '../../../../game/board.js';
+import { createBoard } from '../../../game/board.js';
 import { Board } from './index';
 
 it('lets a player switch between readable tiles and the whole-board overview without changing the deal', () => {

@@ -7,7 +7,7 @@
  * props, so the views stay dumb and testable.
  */
 
-import type { Difficulty, Point, PlayerSession } from '../../duel/types/duel.types';
+import type { Difficulty, Point, PlayerSession } from '../../../shared/types/board.types';
 import type { GameMode, Unlock } from '../../../shared/game/profile';
 
 export type { GameMode, Unlock };

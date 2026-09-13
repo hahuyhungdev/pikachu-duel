@@ -28,6 +28,7 @@ body { background: var(--desk); }
 .shell { max-width: 1380px; }
 .btn { min-height: 44px; border-radius: 8px; box-shadow: none; padding: 10px 16px; }
 .btn:focus-visible, select:focus-visible, input:focus-visible, .board-viewport:focus-visible { outline: 3px solid var(--p1); outline-offset: 3px; }
+.loading-shell { display: grid; place-items: center; min-height: 100vh; color: var(--ink, #fff); font-size: var(--text-lg, 1.25rem); }
 .btn--primary, .btn--retry { color: var(--ink); background: var(--gold); border: 1px solid #b99d39; box-shadow: 0 3px 0 #b49a39; }
 .btn--primary:hover, .btn--retry:hover { background: #ffdc55; }
 .overlay { background: rgb(36 43 37 / 45%); align-items: start; padding: 32px 16px; overflow-x: hidden; }

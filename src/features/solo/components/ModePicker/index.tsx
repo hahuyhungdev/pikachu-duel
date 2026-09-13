@@ -15,10 +15,8 @@ import { getPreset } from '../../../../shared/game/presets.js';
 import { FEVER_MULTIPLIER, FEVER_STREAK } from '../../../../game/session.js';
 import { BOMB_PENALTY_SECONDS, CHRONO_FREEZE_SECONDS, CHRONO_SURGE_SECONDS, GOLD_MULTIPLIER } from '../../../../game/marks.js';
 import { GRAVITY_LABELS } from '../../../../game/gravity.js';
-import { avatarSrc } from '../../../leaderboard/avatars';
+import { avatarSrc, type User, type ProgressSyncStatus } from '../../../leaderboard';
 import { ICONS } from '../../../../game/icons.js';
-import type { User } from '../../../leaderboard/leaderboardApi';
-import type { ProgressSyncStatus } from '../../../leaderboard/hooks/useAccountProgress';
 import type { Difficulty, GameMode, ModeCard, ProfileSummary } from '../../types/solo.types';
 import styles from './ModePicker.module.scss';
 
@@ -159,8 +157,7 @@ export function ModePicker({
             {selected === 'adventure' && bestStage > 1 && (
               <button
                 type="button"
-                className="btn btn--quiet"
-                style={{ padding: '2px 8px', fontSize: '12px', marginTop: '4px' }}
+                className={`btn btn--quiet ${styles.startResetBtn}`}
                 onClick={() => onStart(1)}
               >
                 Start from Stage 1

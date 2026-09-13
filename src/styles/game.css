@@ -1047,6 +1047,11 @@ kbd {
 }
 
 .note[hidden] { display: none; }
+.note[data-error='true'] {
+  color: var(--alarm);
+  font-weight: 600;
+  border-left-color: var(--alarm);
+}
 
 .panel h1 em {
   font-style: normal;

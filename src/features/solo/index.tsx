@@ -7,17 +7,14 @@
  */
 
 import { useState } from 'react';
-import { Board } from '../duel/components/Board';
-import { Toast } from '../duel/components/Toast';
+import { Board } from '../../shared/components/Board';
+import { Toast } from '../../shared/components/Toast';
 import { ModePicker } from './components/ModePicker';
 import { RunHud } from './components/RunHud';
 import { RunResult } from './components/RunResult';
 import { StageIntro } from './components/StageIntro';
 import { useSolo } from './hooks/useSolo';
-import { useAuth } from '../leaderboard/hooks/useAuth';
-import { useAccountProgress } from '../leaderboard/hooks/useAccountProgress';
-import { AuthModal } from '../leaderboard/components/AuthModal';
-import { LeaderboardModal } from '../leaderboard/components/LeaderboardModal';
+import { useAuth, useAccountProgress, AuthModal, LeaderboardModal } from '../leaderboard';
 
 export interface SoloGameProps {
   onOpenDuel: () => void;
