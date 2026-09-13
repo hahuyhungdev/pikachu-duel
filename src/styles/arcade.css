@@ -409,20 +409,20 @@ body:has([data-in-game='true']) {
   .difficulty { grid-template-columns: 1fr; }
   .difficulty-option { flex-direction: row; justify-content: space-between; align-items: center; gap: 8px; }
   .difficulty-option__size { font-size: 12px; }
-  .shell[data-in-game='true'] { padding: 4px 4px; gap: 4px; }
+  .shell[data-in-game='true'] { padding: 4px 4px; gap: 4px; justify-content: flex-start; }
   .board-controls { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 4px; font-size: 11px; color: var(--ink-soft); }
   .board-controls .btn { font-size: 11px; min-height: 28px; padding: 3px 8px; }
-  .board-stage:not([data-overview='true']) .board-viewport { overflow-x: auto; max-height: calc(100dvh - 6.5rem); display: flex; justify-content: flex-start; }
+  .board-stage:not([data-overview='true']) .board-viewport { overflow-x: auto; max-height: calc(100dvh - 11.5rem); display: flex; justify-content: flex-start; }
   .board-stage:not([data-overview='true']) .board-wrap { width: max-content; min-width: 100%; justify-content: flex-start; padding-inline: 4px; }
   .board-stage:not([data-overview='true']) .board { width: var(--board-min); min-inline-size: var(--board-min); margin: 0; }
   .board-stage[data-overview='true'] .board-wrap { width: 100%; min-inline-size: 0; justify-content: center; }
   .board-stage[data-overview='true'] .board { min-inline-size: 0; width: 100%; margin: auto; }
   .board-stage[data-overview='true'] .board-viewport { overflow: hidden; justify-content: center; }
   .board-wrap { display: flex; align-items: center; justify-content: center; min-width: 100%; width: max-content; overflow: visible; }
-  .board-viewport { max-height: calc(100dvh - 6.5rem); display: flex; align-items: center; justify-content: center; }
+  .board-viewport { max-height: calc(100dvh - 11.5rem); display: flex; align-items: center; justify-content: center; }
   .board {
-    width: min(calc((100dvh - 6.5rem) * var(--unit-w) / var(--unit-h) * var(--zoom, 1)), calc((100vw - 8px) * var(--zoom, 1)));
-    max-width: min(calc((100dvh - 6.5rem) * var(--unit-w) / var(--unit-h) * var(--zoom, 1)), calc((100vw - 8px) * var(--zoom, 1)));
+    width: min(calc((100dvh - 11.5rem) * var(--unit-w) / var(--unit-h) * var(--zoom, 1)), calc((100vw - 8px) * var(--zoom, 1)));
+    max-width: min(calc((100dvh - 11.5rem) * var(--unit-w) / var(--unit-h) * var(--zoom, 1)), calc((100vw - 8px) * var(--zoom, 1)));
     margin: auto;
   }
   .cabinet { padding: 0; }
@@ -489,6 +489,37 @@ body:has([data-in-game='true']) {
   .hud { display: flex; flex-wrap: wrap; gap: 12px; }
   .brand { flex-wrap: wrap; }
   .rush-meter { flex-wrap: wrap; gap: 8px; padding: 4px; }
+}
+
+@media (max-height: 520px) {
+  .shell[data-in-game='true'] {
+    padding: 2px 8px;
+    gap: 2px;
+    justify-content: flex-start;
+  }
+  .run-hud,
+  .hud {
+    padding: 2px 8px;
+    gap: 4px;
+  }
+  .board-controls {
+    margin-bottom: 2px;
+    font-size: 10px;
+  }
+  .board-controls .btn {
+    min-height: 24px;
+    padding: 2px 6px;
+    font-size: 10px;
+  }
+  .board-viewport {
+    max-height: calc(100dvh - 5.5rem);
+  }
+  .board {
+    min-inline-size: 0 !important;
+    max-height: calc(100dvh - 5.5rem) !important;
+    width: min(calc((100dvh - 5.5rem) * var(--unit-w) / var(--unit-h) * var(--zoom, 1)), calc((100vw - 16px) * var(--zoom, 1))) !important;
+    max-width: min(calc((100dvh - 5.5rem) * var(--unit-w) / var(--unit-h) * var(--zoom, 1)), calc((100vw - 16px) * var(--zoom, 1))) !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -343,7 +343,7 @@
     .viewport,
     :global(.board-viewport) {
       overflow-x: auto;
-      max-height: calc(100dvh - 6.5rem);
+      max-height: calc(100dvh - 11.5rem);
       display: flex;
       justify-content: flex-start;
     }
@@ -368,7 +368,7 @@
     .viewport,
     :global(.board-viewport) {
       overflow: hidden;
-      max-height: calc(100dvh - 6.5rem);
+      max-height: calc(100dvh - 11.5rem);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -382,10 +382,24 @@
     }
     .board,
     :global(.board) {
-      width: min(calc((100dvh - 6.5rem) * var(--unit-w) / var(--unit-h) * var(--zoom-scale, 1)), calc((100vw - 8px) * var(--zoom-scale, 1)));
-      max-width: min(calc((100dvh - 6.5rem) * var(--unit-w) / var(--unit-h) * var(--zoom-scale, 1)), calc((100vw - 8px) * var(--zoom-scale, 1)));
+      width: min(calc((100dvh - 11.5rem) * var(--unit-w) / var(--unit-h) * var(--zoom-scale, 1)), calc((100vw - 8px) * var(--zoom-scale, 1)));
+      max-width: min(calc((100dvh - 11.5rem) * var(--unit-w) / var(--unit-h) * var(--zoom-scale, 1)), calc((100vw - 8px) * var(--zoom-scale, 1)));
       min-inline-size: 0;
       margin: auto;
+    }
+  }
+
+  @media (max-height: 520px) {
+    .viewport,
+    :global(.board-viewport) {
+      max-height: calc(100dvh - 5.5rem) !important;
+    }
+    .board,
+    :global(.board) {
+      min-inline-size: 0 !important;
+      max-height: calc(100dvh - 5.5rem) !important;
+      width: min(calc((100dvh - 5.5rem) * var(--unit-w) / var(--unit-h) * var(--zoom-scale, 1)), calc(100vw - 16px)) !important;
+      max-width: min(calc((100dvh - 5.5rem) * var(--unit-w) / var(--unit-h) * var(--zoom-scale, 1)), calc(100vw - 16px)) !important;
     }
   }
 }
