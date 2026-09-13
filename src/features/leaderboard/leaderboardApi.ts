@@ -168,15 +168,39 @@ export interface ScoreSubmission {
   stage: number;
   streak: number;
   pairs: number;
+  guestId?: string;
   guestName?: string;
   guestAvatar?: string;
 }
 
+const GUEST_ID_KEY = 'pikachu/guest_id';
+
+export function getOrCreateGuestId(): string {
+  try {
+    let id = localStorage.getItem(GUEST_ID_KEY);
+    if (!id || !/^guest_[a-zA-Z0-9_-]{8,36}$/.test(id)) {
+      const rand = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 6);
+      id = `guest_${rand}`;
+      localStorage.setItem(GUEST_ID_KEY, id);
+    }
+    return id;
+  } catch {
+    return `guest_${Date.now()}`;
+  }
+}
+
 export async function submitScore(submission: ScoreSubmission): Promise<{ rank: number; score: number; stage: number } | null> {
+  const token = getStoredToken();
+  const guestId = !token ? getOrCreateGuestId() : undefined;
+  const payload: ScoreSubmission = {
+    ...submission,
+    ...(guestId && !submission.guestId ? { guestId, guestName: submission.guestName || 'Khách' } : {}),
+  };
+
   try {
     const data = await apiFetch<{ ok: boolean; rank: number; score: number; stage: number }>('/scores', {
       method: 'POST',
-      body: JSON.stringify(submission),
+      body: JSON.stringify(payload),
     });
     return data;
   } catch {
@@ -184,7 +208,7 @@ export async function submitScore(submission: ScoreSubmission): Promise<{ rank: 
     try {
       const raw = localStorage.getItem(OFFLINE_SCORES_KEY);
       const queue = raw ? JSON.parse(raw) : [];
-      queue.push({ ...submission, timestamp: Date.now() });
+      queue.push({ ...payload, timestamp: Date.now() });
       localStorage.setItem(OFFLINE_SCORES_KEY, JSON.stringify(queue.slice(-20)));
     } catch {
       /* ignore */
@@ -194,58 +218,122 @@ export async function submitScore(submission: ScoreSubmission): Promise<{ rank: 
 }
 
 export async function fetchLeaderboard(mode: string, limit = 50): Promise<LeaderboardResponse> {
+  const token = getStoredToken();
+  const guestParam = !token ? `&guestId=${encodeURIComponent(getOrCreateGuestId())}` : '';
   try {
-    return await apiFetch<LeaderboardResponse>(`/leaderboard?mode=${encodeURIComponent(mode)}&limit=${limit}`);
+    return await apiFetch<LeaderboardResponse>(`/leaderboard?mode=${encodeURIComponent(mode)}&limit=${limit}${guestParam}`);
   } catch {
-    // Return offline mock leaderboard so the UI shows gracefully
+    // Return offline mock leaderboard integrated with actual local profile records
     const user = getStoredUser();
+    let userRecord = { bestScore: 0, bestStage: 0, bestStreak: 0 };
+    try {
+      const raw = localStorage.getItem('pikachu-duel/profile');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.modes?.[mode]) {
+          userRecord = parsed.modes[mode];
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+
+    const mockBots: LeaderboardEntry[] = [
+      {
+        rank: 1,
+        userId: 'bot_red',
+        username: 'RedChampion',
+        avatar: 'charizard',
+        score: 28500,
+        stage: 18,
+        streak: 24,
+        createdAt: Date.now() - 3600000 * 5,
+      },
+      {
+        rank: 2,
+        userId: 'bot_blue',
+        username: 'BlueRival',
+        avatar: 'blastoise',
+        score: 24200,
+        stage: 15,
+        streak: 19,
+        createdAt: Date.now() - 3600000 * 12,
+      },
+      {
+        rank: 3,
+        userId: 'bot_yellow',
+        username: 'PikaVolt',
+        avatar: 'pikachu',
+        score: 21800,
+        stage: 14,
+        streak: 17,
+        createdAt: Date.now() - 3600000 * 20,
+      },
+    ];
+
+    const hasLocalProgress = userRecord.bestStage > 0 || userRecord.bestScore > 0;
+    let userEntry: LeaderboardEntry | null = null;
+    let entries = [...mockBots];
+
+    if (hasLocalProgress) {
+      userEntry = {
+        rank: 0,
+        userId: user ? user.id : getOrCreateGuestId(),
+        username: user ? user.username : 'Bạn (Thiết bị này)',
+        avatar: user ? user.avatar : 'pikachu',
+        score: userRecord.bestScore,
+        stage: userRecord.bestStage,
+        streak: userRecord.bestStreak,
+        createdAt: Date.now(),
+      };
+
+      entries.push(userEntry);
+      entries.sort((a, b) => {
+        if (mode === 'adventure' && b.stage !== a.stage) return b.stage - a.stage;
+        return b.score - a.score;
+      });
+
+      entries = entries.map((item, idx) => {
+        const ranked = { ...item, rank: idx + 1 };
+        if (ranked.userId === userEntry!.userId) {
+          userEntry = ranked;
+        }
+        return ranked;
+      });
+    }
+
     return {
       ok: true,
       mode,
-      entries: [
-        {
-          rank: 1,
-          userId: 'bot_red',
-          username: 'RedChampion',
-          avatar: 'charizard',
-          score: 28500,
-          stage: 18,
-          streak: 24,
-          createdAt: Date.now() - 3600000 * 5,
-        },
-        {
-          rank: 2,
-          userId: 'bot_blue',
-          username: 'BlueRival',
-          avatar: 'blastoise',
-          score: 24200,
-          stage: 15,
-          streak: 19,
-          createdAt: Date.now() - 3600000 * 12,
-        },
-        {
-          rank: 3,
-          userId: 'bot_yellow',
-          username: 'PikaVolt',
-          avatar: 'pikachu',
-          score: 21800,
-          stage: 14,
-          streak: 17,
-          createdAt: Date.now() - 3600000 * 20,
-        },
-      ],
-      userEntry: user
-        ? {
-            rank: 4,
-            userId: user.id,
-            username: user.username,
-            avatar: user.avatar,
-            score: 15400,
-            stage: 10,
-            streak: 12,
-            createdAt: Date.now(),
-          }
-        : null,
+      entries,
+      userEntry,
     };
+  }
+}
+
+/**
+ * Syncs any local personal bests to the leaderboard server
+ * (e.g. from previous runs or offline play).
+ */
+export async function syncLocalBests(): Promise<void> {
+  try {
+    const raw = localStorage.getItem('pikachu-duel/profile');
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    const modes = ['adventure', 'timeattack', 'classic', 'daily'];
+    for (const mode of modes) {
+      const rec = parsed?.modes?.[mode];
+      if (rec && (rec.bestStage > 1 || rec.bestScore > 0)) {
+        await submitScore({
+          mode,
+          score: rec.bestScore || 0,
+          stage: rec.bestStage || 1,
+          streak: rec.bestStreak || 0,
+          pairs: 0,
+        });
+      }
+    }
+  } catch {
+    /* ignore sync failures */
   }
 }

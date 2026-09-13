@@ -337,6 +337,23 @@ export function useSolo(userId?: string | null, accountProfile?: Profile) {
         checkpoint.modes.adventure.bestStage = Math.max(checkpoint.modes.adventure.bestStage, round.stage);
         saveProfile(checkpoint, userId);
         setProfile(checkpoint);
+
+        // Submit milestone score immediately so stage progression is never lost if quit or refreshed
+        submitScore({
+          mode: 'adventure',
+          score: totalScore,
+          stage: round.stage,
+          streak: bestStreak,
+          pairs: totalPairs,
+        })
+          .then((res) => {
+            if (res?.rank) {
+              setSummary((prev) => (prev ? { ...prev, globalRank: res.rank } : prev));
+            }
+          })
+          .catch(() => {
+            /* offline or network error handled gracefully */
+          });
       }
 
       const outcomeRecord = runContinues
@@ -620,13 +637,25 @@ export function useSolo(userId?: string | null, accountProfile?: Profile) {
   }, [startRun]);
 
   const changeMode = useCallback(() => {
+    // If quitting during an active run with a score, submit score so progress is not lost
+    if (round && round.mode !== 'zen' && runScore > 0) {
+      submitScore({
+        mode: round.mode,
+        score: runScore,
+        stage: round.stage,
+        streak: runBestStreak,
+        pairs: runPairs,
+      }).catch(() => {
+        /* offline or network error handled gracefully */
+      });
+    }
     clearTimers();
     setSummary(null);
     setSession(null);
     setRound(null);
     setIntroOpen(false);
     setPhase('menu');
-  }, [clearTimers]);
+  }, [clearTimers, round, runBestStreak, runPairs, runScore]);
 
   const beginStage = useCallback(() => setIntroOpen(false), []);
 

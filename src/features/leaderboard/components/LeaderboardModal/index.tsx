@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { avatarSrc } from '../../avatars';
-import { fetchLeaderboard, type LeaderboardEntry } from '../../leaderboardApi';
+import { fetchLeaderboard, syncLocalBests, type LeaderboardEntry } from '../../leaderboardApi';
 
 interface LeaderboardModalProps {
   isOpen: boolean;
@@ -27,16 +27,22 @@ export function LeaderboardModal({ isOpen, onClose, defaultMode = 'adventure' }:
     queueMicrotask(() => {
       if (!ignore) setLoading(true);
     });
-    fetchLeaderboard(activeMode)
-      .then((res) => {
-        if (!ignore) {
-          setEntries(res.entries);
-          setUserEntry(res.userEntry ?? null);
-        }
-      })
-      .finally(() => {
-        if (!ignore) setLoading(false);
-      });
+
+    // Sync any unsubmitted local records (e.g. from previous runs or offline play)
+    void syncLocalBests().finally(() => {
+      if (ignore) return;
+      fetchLeaderboard(activeMode)
+        .then((res) => {
+          if (!ignore) {
+            setEntries(res.entries);
+            setUserEntry(res.userEntry ?? null);
+          }
+        })
+        .finally(() => {
+          if (!ignore) setLoading(false);
+        });
+    });
+
     return () => {
       ignore = true;
     };
@@ -170,7 +176,9 @@ export function LeaderboardModal({ isOpen, onClose, defaultMode = 'adventure' }:
               <div className="leaderboard-sticky-user">
                 <span className="sticky-user__rank">Hạng #{userEntry.rank}</span>
                 <img className="sticky-user__avatar" src={avatarSrc(userEntry.avatar)} alt="" />
-                <span className="sticky-user__name">{userEntry.username} (Bạn)</span>
+                <span className="sticky-user__name">
+                  {userEntry.username.includes('Bạn') ? userEntry.username : `${userEntry.username} (Bạn)`}
+                </span>
                 {activeMode === 'adventure' && (
                   <span className="sticky-user__stage">Màn {userEntry.stage}</span>
                 )}

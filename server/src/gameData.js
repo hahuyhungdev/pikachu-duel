@@ -391,7 +391,9 @@ export class GameData {
       username = user.username;
       avatar = user.avatar;
     } else {
-      userId = `guest_${randomHex(8)}`;
+      userId = (typeof body.guestId === 'string' && /^guest_[a-zA-Z0-9_-]{8,36}$/.test(body.guestId))
+        ? body.guestId
+        : `guest_${randomHex(8)}`;
       username = String(body.guestName ?? 'Khách').trim().slice(0, 20) || 'Khách';
       avatar = String(body.guestAvatar ?? 'pikachu').trim() || 'pikachu';
     }
@@ -488,6 +490,9 @@ export class GameData {
     const mode = url.searchParams.get('mode') ?? 'adventure';
     const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit')) || 50));
     const user = await this.getUserFromAuth(request);
+    const guestIdParam = url.searchParams.get('guestId');
+    const guestId = (typeof guestIdParam === 'string' && /^guest_[a-zA-Z0-9_-]{8,36}$/.test(guestIdParam)) ? guestIdParam : null;
+    const targetUserId = user?.id || guestId;
 
     let entries;
     let userEntry = null;
@@ -532,8 +537,8 @@ export class GameData {
         createdAt: item.created_at,
       }));
 
-      if (user) {
-        const found = entries.find((e) => e.userId === user.id);
+      if (targetUserId) {
+        const found = entries.find((e) => e.userId === targetUserId);
         if (found) {
           userEntry = found;
         } else {
@@ -544,7 +549,7 @@ export class GameData {
                FROM scores
                WHERE mode = ? AND user_id = ?`,
               mode,
-              user.id,
+              targetUserId,
             ),
           );
           if (userBestRows.length > 0 && userBestRows[0].score !== null) {
@@ -572,9 +577,9 @@ export class GameData {
             }
             userEntry = {
               rank: count + 1,
-              userId: user.id,
-              username: user.username,
-              avatar: user.avatar,
+              userId: targetUserId,
+              username: user?.username ?? 'Khách',
+              avatar: user?.avatar ?? 'pikachu',
               score: uScore,
               stage: uStage,
               streak: userBestRows[0].streak ?? 0,
@@ -608,8 +613,8 @@ export class GameData {
         createdAt: item.created_at,
       }));
 
-      if (user) {
-        const idx = sorted.findIndex((s) => s.user_id === user.id);
+      if (targetUserId) {
+        const idx = sorted.findIndex((s) => s.user_id === targetUserId);
         if (idx >= 0) {
           const item = sorted[idx];
           userEntry = {
