@@ -3,6 +3,7 @@ import { createBoard, inBounds, isEmpty } from '../../../game/board.js';
 import { randomSeed } from '../../../game/rng.js';
 import {
   createSession,
+  expireCombo,
   requestHint,
   requestShuffle,
   select,
@@ -21,6 +22,7 @@ import type {
   Difficulty,
   DuelMode,
   DuelSetup,
+  DuelRules,
   OnlinePeer,
   OnlineState,
   PlayerSession,
@@ -34,7 +36,7 @@ interface RelayMessage {
   hostId?: string;
   foeId?: string;
   players?: OnlinePeer[];
-  settings?: { difficulty: Difficulty; clock: number };
+  settings?: { difficulty: Difficulty; clock: number; rules?: DuelRules };
   status?: 'lobby' | 'playing' | 'over';
   seed?: number;
   score?: number;
@@ -138,6 +140,7 @@ function getInitialSetup(): { setup: DuelSetup; seed: number } | null {
       names,
       difficulty,
       clock,
+      rules: params.get('rules') === 'rush' ? 'rush' : saved.rules ?? 'classic',
     },
     seed,
   };
@@ -159,6 +162,7 @@ function buildPlayerState(
   const session: PlayerSession = isRemote
     ? ({
         label,
+        rush: setup.rules === 'rush',
         seed,
         board: {
           rows: preset.rows,
@@ -186,6 +190,7 @@ function buildPlayerState(
         hints: preset.hints,
         shuffles: preset.shuffles,
         label,
+        rush: setup.rules === 'rush',
       }) as unknown as PlayerSession);
 
   return {
@@ -453,6 +458,21 @@ export function useDuel() {
     return () => clearInterval(timer);
   }, [duel, finishDuel]);
 
+  // Keep idle combo expiration visible without tying it to the match clock.
+  const rushActive = Boolean(duel && !duel.over && duel.setup.rules === 'rush');
+  useEffect(() => {
+    if (!rushActive) return;
+    const timer = window.setInterval(() => {
+      setPlayers((current) => current.map((player) => {
+        if (player.remote || !player.session.comboExpiresAt) return player;
+        const session = { ...player.session };
+        expireCombo(session);
+        return { ...player, session, comboRemainingMs: Math.max(0, (session.comboExpiresAt ?? 0) - Date.now()) };
+      }));
+    }, 100);
+    return () => window.clearInterval(timer);
+  }, [rushActive]);
+
   // Handle tile pick
   const handlePick = useCallback(
     (playerIndex: number, r: number, c: number) => {
@@ -498,6 +518,7 @@ export function useDuel() {
               clearingTiles: [...player.clearingTiles, ...clearedKeys],
               traces: [...player.traces, { id: traceId, d }],
               floaters: [...player.floaters, { id: floaterId, point: mid, text: `+${result.gained}` }],
+              comboRemainingMs: player.session.rush ? 5000 : 0,
               session: {
                 ...player.session,
                 board: {
@@ -752,7 +773,7 @@ export function useDuel() {
   }, [duel, startDuel]);
 
   const startOnlineRound = useCallback(
-    (seed: number, settings: { difficulty: string; clock: number }, roster: OnlinePeer[]) => {
+    (seed: number, settings: { difficulty: string; clock: number; rules?: DuelRules }, roster: OnlinePeer[]) => {
       const normalizedDiff = (normalizeDifficulty(settings.difficulty) || 'normal') as Difficulty;
       const preset = PRESETS[normalizedDiff] ?? PRESETS.normal;
       const level = preset.level ?? 2;
@@ -768,6 +789,7 @@ export function useDuel() {
         difficulty: normalizedDiff,
         clock,
         level,
+        rules: settings.rules ?? 'classic',
       };
 
       const myPlayer = buildPlayerState(0, setup, seed);
@@ -1042,6 +1064,13 @@ export function useDuel() {
     });
   }, []);
 
+  const changeOnlineRules = useCallback((rules: DuelRules) => {
+    setOnline((prev) => {
+      relayRef.current?.send({ t: 'settings', settings: { ...prev.settings, rules } });
+      return { ...prev, settings: { ...prev.settings, rules } };
+    });
+  }, []);
+
   const startOnlineDuel = useCallback(() => {
     relayRef.current?.send({ t: 'start' });
   }, []);
@@ -1112,6 +1141,7 @@ export function useDuel() {
     joinOnline,
     changeOnlineDifficulty,
     changeOnlineClock,
+    changeOnlineRules,
     startOnlineDuel,
     leaveOnlineRoom,
     copyOnlineInvite,

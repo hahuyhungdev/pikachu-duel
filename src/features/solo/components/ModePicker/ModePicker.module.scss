@@ -1,0 +1,169 @@
+@use '../../../../styles/tokens' as *;
+@use '../../../../styles/mixins' as *;
+
+.overlay {
+  background: var(--desk);
+  padding-block: 28px;
+  overflow-x: hidden;
+}
+
+.panel {
+  width: min(1060px, 100%);
+  padding: 28px 40px;
+  border: 1px solid #d2d1c4;
+  border-radius: 20px;
+  background: var(--chrome);
+}
+
+.menuCloudBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 0 18px;
+  margin: 0 0 24px;
+  border: 0;
+  border-bottom: 1px solid #deded0;
+  gap: 12px;
+}
+
+.hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: center;
+  margin-bottom: 24px;
+
+  h1 {
+    margin-top: 12px;
+    font-size: clamp(2.7rem, 5vw, 4rem);
+    line-height: 1.05;
+  }
+}
+
+.heroAccent {
+  display: block;
+  font-size: 0.55em;
+  color: var(--p1);
+  letter-spacing: -0.02em;
+  margin-top: 8px;
+}
+
+.mascot {
+  display: grid;
+  justify-items: center;
+  flex: 0 0 180px;
+  background: #f5da66;
+  border-radius: 50% 50% 16px 16px;
+  padding: 8px 16px 16px;
+
+  img {
+    width: 128px;
+    height: 128px;
+    image-rendering: pixelated;
+  }
+
+  span {
+    font-size: 11px;
+    font-weight: 700;
+  }
+}
+
+.startCard {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  background: #edf1e8;
+  border: 1px solid #cbd3c1;
+  border-radius: 12px;
+
+  strong {
+    display: block;
+    font-family: var(--font-display);
+    font-size: 22px;
+  }
+
+  p {
+    margin: 4px 0 0;
+    font-size: 14px;
+    color: var(--ink-soft);
+  }
+
+  .btn {
+    flex-shrink: 0;
+    min-width: 200px;
+    min-height: 52px;
+    font-size: 16px;
+  }
+}
+
+.modeList {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.modeCard {
+  padding: 16px 12px;
+  gap: 8px;
+  background: transparent;
+  border: 1px solid #d4d6c9;
+  border-radius: 10px;
+
+  &[data-selected='true'] {
+    background: #f9edb5;
+    color: var(--ink);
+    border: 2px solid #8d7323;
+    padding: 15px 11px;
+  }
+}
+
+@include tablet {
+  .panel {
+    padding: 24px;
+  }
+  .modeList {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .startCard .btn {
+    min-width: 170px;
+  }
+}
+
+@include mobile {
+  .hero {
+    gap: 12px;
+    align-items: start;
+    margin-bottom: 20px;
+  }
+  .mascot {
+    flex-basis: 80px;
+    padding: 4px;
+    border-radius: 40px 40px 8px 8px;
+
+    img {
+      width: 76px;
+      height: 88px;
+    }
+    span {
+      display: none;
+    }
+  }
+  .startCard {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+  .modeList {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .modeCard:last-child {
+    grid-column: 1 / -1;
+  }
+}

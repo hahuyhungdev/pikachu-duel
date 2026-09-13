@@ -5,7 +5,7 @@ const normalPreset = {
   difficultyLabel: 'Medium',
   rows: 9,
   cols: 16,
-  iconCount: MAX_ICONS,
+  iconCount: 24,
   hints: 2,
   shuffles: 2,
   level: 2,

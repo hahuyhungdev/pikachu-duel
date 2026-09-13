@@ -116,6 +116,7 @@ export interface ProfileSummary {
   totalPlays: number;
   unlocked: number;
   unlockTotal: number;
+  adventureBestStage?: number;
 }
 
 export interface SoloHud {

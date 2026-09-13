@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { isRoomCode } from '../../../../net/config.js';
-import type { Difficulty, DuelMode, DuelSetup } from '../../types/duel.types';
+import type { Difficulty, DuelMode, DuelSetup, DuelRules } from '../../types/duel.types';
 
 interface StartOverlayProps {
   isOpen: boolean;
@@ -31,6 +31,7 @@ export function StartOverlay({
   const [p2, setP2] = useState(initialP2);
   const [difficulty, setDifficulty] = useState<Difficulty>(initialDifficulty);
   const [clock, setClock] = useState<number>(initialClock);
+  const [rules, setRules] = useState<DuelRules>('rush');
   const [onlineName, setOnlineName] = useState(initialP1 || 'Player');
   const [onlineRoom, setOnlineRoom] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -49,6 +50,7 @@ export function StartOverlay({
       names: [p1.trim().slice(0, 18) || fallbackP1, p2.trim().slice(0, 18) || 'Player Two'],
       difficulty,
       clock: Number(clock),
+      rules,
     });
   };
 
@@ -143,7 +145,7 @@ export function StartOverlay({
               >
                 <option value="easy">Easy — Quick · 8 × 10 · 16 Pokémon</option>
                 <option value="normal">Medium — Classic · 9 × 16 · 24 Pokémon</option>
-                <option value="hard">Hard — Grand · 12 × 16 · 24 Pokémon</option>
+                <option value="hard">Hard — Grand · 12 × 16 · 48 Pokémon</option>
               </select>
             </label>
             <label className="field">
@@ -160,6 +162,17 @@ export function StartOverlay({
               </select>
             </label>
           </div>
+
+          <label className="field rules-choice">
+            Rules
+            <select value={rules} onChange={(e) => setRules(e.target.value as DuelRules)}>
+              <option value="rush">Duel Rush — timed combos</option>
+              <option value="classic">Classic — steady matching</option>
+            </select>
+          </label>
+          <p className="note">{rules === 'rush'
+            ? 'Match within five seconds to keep your combo. Five in a row: Fever ×2 and one bonus hint per board.'
+            : 'Take time to plan. Your combo lasts until a missed match.'}</p>
 
           <div className="rules-brief">
             <div>

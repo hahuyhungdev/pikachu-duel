@@ -1,0 +1,70 @@
+@use '../../../../styles/tokens' as *;
+@use '../../../../styles/mixins' as *;
+
+.overlay {
+  background: rgba(36, 43, 37, 0.45);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 32px 16px;
+  overflow-x: hidden;
+}
+
+.panel {
+  width: min(540px, 100%);
+  padding: 32px;
+  border-radius: 16px;
+  background: var(--chrome);
+  border: 1px solid var(--chrome-edge);
+  box-shadow: 0 16px 64px rgba(36, 43, 37, 0.12);
+  text-align: center;
+}
+
+.stars {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin: 12px 0 20px;
+}
+
+.speedStrip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: #edf1e8;
+  border: 1px solid #cbd3c1;
+  border-radius: 8px;
+  margin: 16px 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--p1);
+}
+
+.rankBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #fdf5d6;
+  border: 1px solid #e2cb6c;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold-deep);
+  margin-bottom: 16px;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 24px;
+
+  .btn {
+    width: 100%;
+    min-height: 48px;
+    font-size: 15px;
+  }
+}

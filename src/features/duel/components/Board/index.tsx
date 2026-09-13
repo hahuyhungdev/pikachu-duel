@@ -1,7 +1,8 @@
-import { useMemo, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { getTile, inBounds } from '../../../../game/board.js';
 import type { BoardData, Floater, Point, TracePath, VeilInfo } from '../../types/duel.types';
 import { Tile, type TileMarkKind } from '../Tile';
+import styles from './Board.module.scss';
 
 /** Mark ids as `src/game/marks.js` stores them, mapped to what the Tile renders. */
 const MARK_KINDS: Record<number, TileMarkKind> = { 1: 'gold', 2: 'ice', 3: 'bomb', 4: 'chrono' };
@@ -54,6 +55,7 @@ export function Board({
   crackingTiles = [],
   onPick,
 }: BoardProps) {
+  const [overview, setOverview] = useState(false);
   const padRows = board.rows + 2;
   const padCols = board.cols + 2;
   const unitW = board.cols + 1;
@@ -82,18 +84,75 @@ export function Board({
     }
   }
 
+  const [zoom, setZoom] = useState(1);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  };
+
   const boardStyle: CSSProperties = {
     ['--rows' as string]: String(board.rows),
     ['--cols' as string]: String(board.cols),
     ['--unit-w' as string]: String(unitW),
     ['--unit-h' as string]: String(unitH),
     ['--board-min' as string]: `${unitW * 46}px`,
+    ['--zoom' as string]: String(zoom),
+    ['--zoom-scale' as string]: String(zoom),
+  };
+
+  const zoomIn = () => {
+    setOverview(false);
+    setZoom((z) => Math.min(1.5, Number((z + 0.1).toFixed(1))));
+  };
+  const zoomOut = () => {
+    setZoom((z) => Math.max(0.7, Number((z - 0.1).toFixed(1))));
+  };
+  const zoomReset = () => {
+    setZoom(1);
+  };
+  const toggleOverview = () => {
+    if (!overview) setZoom(1);
+    setOverview(!overview);
   };
 
   return (
-    <div className="board-wrap">
+    <div className={`${styles.stage} board-stage`} data-overview={overview} style={boardStyle}>
+      <div className={`${styles.controls} board-controls`}>
+        <div className={`${styles.zoomControls} zoom-controls`} role="group" aria-label="Zoom controls">
+          <button type="button" className={`${styles.zoomBtn} zoom-btn`} aria-label="Zoom out" onClick={zoomOut} disabled={zoom <= 0.7}>−</button>
+          <button type="button" className={`${styles.zoomBtn} ${styles.zoomVal} zoom-btn zoom-val`} aria-label="Reset zoom" onClick={zoomReset}>{Math.round(zoom * 100)}%</button>
+          <button type="button" className={`${styles.zoomBtn} zoom-btn`} aria-label="Zoom in" onClick={zoomIn} disabled={zoom >= 1.5}>+</button>
+          <button
+            type="button"
+            className={`${styles.zoomBtn} zoom-btn`}
+            aria-label={isFullscreen ? 'Exit full screen' : 'Full screen'}
+            title={isFullscreen ? 'Thoát toàn màn hình' : 'Mở rộng toàn màn hình'}
+            onClick={toggleFullscreen}
+          >
+            {isFullscreen ? '✕' : '⛶'}
+          </button>
+        </div>
+        <button type="button" className={`${styles.boardToggle} btn btn--sm board-toggle`} aria-pressed={!overview} onClick={toggleOverview}>
+          {overview ? 'Larger tiles' : 'Whole board'}
+        </button>
+      </div>
+      <div className={`${styles.viewport} board-viewport`} tabIndex={0} role="region" aria-label={`${label} scrollable playfield`}>
+      <div className={`${styles.wrap} board-wrap`}>
       <div
-        className="board"
+        className={`${styles.board} board`}
         style={boardStyle}
         role="grid"
         aria-label={`${label} board, ${board.rows} by ${board.cols}`}
@@ -167,6 +226,8 @@ export function Board({
           </div>
         </div>
       )}
+      </div>
+      </div>
     </div>
   );
 }

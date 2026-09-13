@@ -23,6 +23,8 @@ export const STREAK_BONUS = 25;
 /** Matches in a row before the board catches fire. */
 export const FEVER_STREAK = 8;
 export const FEVER_MULTIPLIER = 2;
+export const RUSH_WINDOW_MS = 5000;
+export const RUSH_FEVER_STREAK = 5;
 
 /** The streak each combo tier starts at; the index into this list is the tier. */
 export const COMBO_TIERS = [0, 3, 5, FEVER_STREAK];
@@ -55,6 +57,7 @@ export function createSession({
   bombFuse = 12,
   chrono = 0,
   timeGain = null,
+  rush = false,
 } = {}) {
   const session = {
     label,
@@ -74,6 +77,9 @@ export function createSession({
     gravity: normalizeGravity(gravity),
     tier: 0,
     fever: false,
+    rush,
+    comboExpiresAt: 0,
+    feverRewarded: false,
     timeGain: { match: 0, fever: 0, ...(timeGain ?? {}) },
   };
 
@@ -93,15 +99,27 @@ function breakStreak(session) {
   session.streak = 0;
   session.tier = 0;
   session.fever = false;
+  session.comboExpiresAt = 0;
   session.mistakes += 1;
+}
+
+/** Expiration loses the multiplier, never score, a selection or a life. */
+export function expireCombo(session, now = Date.now()) {
+  if (!session.rush || !session.comboExpiresAt || now < session.comboExpiresAt) return false;
+  session.streak = 0;
+  session.tier = 0;
+  session.fever = false;
+  session.comboExpiresAt = 0;
+  return true;
 }
 
 /**
  * Handle a click / keypress on (r, c).
  * Returns one of: select, deselect, match, crack, mismatch, blocked, invalid.
  */
-export function select(session, r, c) {
+export function select(session, r, c, now = Date.now()) {
   if (session.status !== 'playing') return { type: 'invalid', reason: 'finished' };
+  expireCombo(session, now);
   if (isEmpty(session.board, r, c)) return { type: 'invalid', reason: 'no-tile' };
 
   const tile = { r, c };
@@ -138,7 +156,15 @@ export function select(session, r, c) {
   session.streak += 1;
   session.bestStreak = Math.max(session.bestStreak, session.streak);
   session.tier = comboTier(session.streak);
-  session.fever = session.streak >= FEVER_STREAK;
+  session.fever = session.streak >= (session.rush ? RUSH_FEVER_STREAK : FEVER_STREAK);
+  if (session.rush) {
+    session.comboExpiresAt = now + RUSH_WINDOW_MS;
+    if (session.fever) session.tier = 3;
+    if (session.fever && !session.feverRewarded) {
+      session.hintsLeft += 1;
+      session.feverRewarded = true;
+    }
+  }
 
   const base = MATCH_SCORE + (session.streak - 1) * STREAK_BONUS;
   const feverFactor = session.fever ? FEVER_MULTIPLIER : 1;

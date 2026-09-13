@@ -1,0 +1,27 @@
+// Design tokens: palette, typography, radii, and transitions
+:root {
+  --desk: #ece9df;
+  --desk-deep: #ece9df;
+  --chrome: #fffdf6;
+  --chrome-raised: #f7f4e9;
+  --chrome-hi: #fffef9;
+  --chrome-lo: #d4d0c0;
+  --chrome-edge: #b7b3a5;
+  --ink: #242b25;
+  --ink-soft: #555e52;
+  --ink-faint: #626858;
+  --gold: #f3cd42;
+  --gold-deep: #765607;
+  --p1: #315e4c;
+  --p1-soft: #477b65;
+  --p2: #ae4434;
+  --p2-soft: #ca5745;
+  --alarm: #af3228;
+  --felt: #dce3d6;
+  --felt-deep: #dce3d6;
+  --radius: 16px;
+  --radius-sm: 6px;
+  --bevel-up: none;
+  --bevel-down: none;
+  --bevel-sunken: none;
+}

@@ -20,6 +20,13 @@ vi.mock('../../net/client.js', async (importOriginal) => {
 });
 
 describe('Pikachu Duel React feature', () => {
+  it('lets players select Rush and explains its five-second combo', () => {
+    render(<DuelGame />);
+    fireEvent.change(screen.getByRole('combobox', { name: 'Rules' }), { target: { value: 'rush' } });
+    expect(screen.getByText(/five seconds/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /start duel/i }));
+    expect(screen.getAllByText(/Next pair within 5s/i)).toHaveLength(2);
+  });
   it('uses a 16 by 9 Classic board as the default preset', () => {
     expect(PRESETS.normal).toMatchObject({
       label: 'Classic',
@@ -64,7 +71,7 @@ describe('Pikachu Duel React feature', () => {
       'Dragonite',
     ];
 
-    expect(ICONS).toHaveLength(24);
+    expect(ICONS).toHaveLength(48);
     expect(ICONS.map((icon) => icon.label)).toEqual(expect.arrayContaining(classicRoster));
     expect(ICONS.map((icon) => icon.label)).not.toEqual(expect.arrayContaining(['Togepi', 'Mudkip', 'Torchic']));
     expect(ICONS.every((icon) => icon.src.includes('/pokemon/'))).toBe(true);
@@ -186,4 +193,3 @@ describe('Pikachu Duel React feature', () => {
     expect(roomHeading).toBeInTheDocument();
   });
 });
-

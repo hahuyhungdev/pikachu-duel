@@ -351,4 +351,51 @@ describe('the solo run', () => {
     fireEvent.click(lbBtn!);
     expect(leaderboardOpened).toBe(true);
   });
+
+  it('renders resume stage action and start from stage 1 action on game over in adventure mode', () => {
+    let continued = false;
+    let retried = false;
+    const summary: RunSummary = {
+      mode: 'adventure',
+      modeLabel: 'Adventure',
+      stage: 5,
+      stars: 0,
+      runScore: 12500,
+      stageScore: 0,
+      pairs: 10,
+      bestStreak: 4,
+      heartsLeft: 0,
+      records: { score: false, stage: false, streak: false },
+      previousBest: { score: 15000, stage: 5, streak: 8 },
+      newUnlocks: [],
+    };
+    const { container } = render(
+      <RunResult
+        isOpen={true}
+        phase="over"
+        summary={summary}
+        canContinue={true}
+        continueLabel="Resume stage 5 ↺"
+        onContinue={() => {
+          continued = true;
+        }}
+        onRetryRun={() => {
+          retried = true;
+        }}
+        onChangeMode={() => {}}
+      />,
+    );
+
+    const continueBtn = container.querySelector<HTMLButtonElement>('[data-action="continue"]');
+    expect(continueBtn).not.toBeNull();
+    expect(continueBtn).toHaveTextContent('Resume stage 5 ↺');
+    fireEvent.click(continueBtn!);
+    expect(continued).toBe(true);
+
+    const retryBtn = container.querySelector<HTMLButtonElement>('[data-action="retry-run"]');
+    expect(retryBtn).not.toBeNull();
+    expect(retryBtn).toHaveTextContent('Start from Stage 1');
+    fireEvent.click(retryBtn!);
+    expect(retried).toBe(true);
+  });
 });

@@ -83,6 +83,7 @@ export function DuelGame({ rootRef }: DuelGameProps = {}) {
     joinOnline,
     changeOnlineDifficulty,
     changeOnlineClock,
+    changeOnlineRules,
     startOnlineDuel,
     leaveOnlineRoom,
     copyOnlineInvite,
@@ -114,7 +115,7 @@ export function DuelGame({ rootRef }: DuelGameProps = {}) {
   const nextLevelText = `Next level: Level ${next.level} (${nextDiffText})`;
 
   return (
-    <div className="shell" data-app ref={rootRef}>
+    <div className="shell" data-app data-surface="duel" data-in-game={duel ? 'true' : undefined} ref={rootRef}>
       <Hud
         level={duel?.level ?? 1}
         difficultyLabel={diffLabel}
@@ -161,6 +162,7 @@ export function DuelGame({ rootRef }: DuelGameProps = {}) {
         onCopyInvite={copyOnlineInvite}
         onChangeDifficulty={changeOnlineDifficulty}
         onChangeClock={changeOnlineClock}
+        onChangeRules={changeOnlineRules}
         onStartDuel={startOnlineDuel}
         onLeaveRoom={leaveOnlineRoom}
       />

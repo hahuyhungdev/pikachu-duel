@@ -12,6 +12,7 @@
 import type { CSSProperties } from 'react';
 import { clockText } from '../../../../shared/utils/format';
 import type { SoloHud } from '../../types/solo.types';
+import styles from './RunHud.module.scss';
 
 interface RunHudProps {
   hud: SoloHud;
@@ -57,8 +58,8 @@ export function RunHud({
   } as CSSProperties;
 
   return (
-    <header className="run-hud" data-mode={hud.mode}>
-      <div className="run-hud__status">
+    <header className={`${styles.hud} run-hud`} data-mode={hud.mode}>
+      <div className={`${styles.status} run-hud__status`}>
         <span className="stage-chip" data-mode={hud.mode}>
           <b className="stage-chip__name">{stageName}</b>
           {hud.stageNote ? <span className="stage-chip__note">{hud.stageNote}</span> : null}
@@ -101,9 +102,9 @@ export function RunHud({
         ) : null}
       </div>
 
-      {hud.objective ? <p className="objective">{hud.objective}</p> : null}
+      {hud.objective ? <p className={`${styles.objective} objective`}>{hud.objective}</p> : null}
 
-      <div className="run-hud__meters">
+      <div className={`${styles.meters} run-hud__meters`}>
         <div
           className="combo"
           data-tier={String(hud.tier)}
@@ -116,12 +117,12 @@ export function RunHud({
           </span>
         </div>
 
-        <div className="run-stats">
-          <div className="run-stat" data-stat="pairs">
-            <span className="run-stat__label">Pairs left</span>
+        <div className={`${styles.stats} run-stats`}>
+          <div className={`${styles.stat} run-stat`} data-stat="pairs">
+            <span className={`${styles.statLabel} run-stat__label`}>Pairs left</span>
             {/* The one number worth announcing mid-run: how close the board is to done. */}
             <output
-              className="run-stat__value"
+              className={`${styles.statValue} run-stat__value`}
               aria-live="polite"
               aria-label={`${hud.pairsLeft} of ${hud.totalPairs} pairs left`}
             >
@@ -130,9 +131,9 @@ export function RunHud({
             </output>
           </div>
 
-          <div className="run-stat" data-stat="score">
-            <span className="run-stat__label">Score</span>
-            <output className="run-stat__value">{hud.runScore.toLocaleString('en-US')}</output>
+          <div className={`${styles.stat} run-stat`} data-stat="score">
+            <span className={`${styles.statLabel} run-stat__label`}>Score</span>
+            <output className={`${styles.statValue} run-stat__value`}>{hud.runScore.toLocaleString('en-US')}</output>
             {chasingBest ? (
               <span className="run-stat__best" data-beaten={beatingBest ? 'true' : undefined}>
                 Best {hud.bestScore.toLocaleString('en-US')}
@@ -142,7 +143,7 @@ export function RunHud({
         </div>
       </div>
 
-      <div className="hud__actions run-hud__actions">
+      <div className={`${styles.actions} hud__actions run-hud__actions`}>
         <button
           className="btn"
           type="button"

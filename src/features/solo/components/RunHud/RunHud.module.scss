@@ -1,0 +1,133 @@
+@use '../../../../styles/tokens' as *;
+@use '../../../../styles/mixins' as *;
+
+.hud {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  padding: 6px 14px;
+  background: var(--chrome);
+  border: 1px solid var(--chrome-edge);
+  border-radius: 10px;
+  max-width: min(960px, 100%);
+  width: 100%;
+  margin-inline: auto;
+  box-shadow: none;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.clock {
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 2.2vw, 1.6rem);
+  min-width: 4.8rem;
+  padding: 3px 8px;
+  text-align: center;
+  border-radius: 6px;
+  background: #242b25;
+  color: #ffdf60;
+}
+
+.meters {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.statLabel {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.statValue {
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--ink);
+}
+
+.actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+
+  .btn {
+    min-height: 36px;
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+}
+
+.objective {
+  order: 10;
+  flex: 1 0 100%;
+  font-size: 12px;
+  padding: 4px 8px;
+  margin-top: 2px;
+  color: var(--ink-soft);
+  background: #f7f9f4;
+  border-left: 3px solid var(--p1);
+  border-radius: 0 4px 4px 0;
+}
+
+@include mobile {
+  .hud {
+    padding: 10px 12px;
+    flex-wrap: nowrap;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .status {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .meters {
+    justify-content: space-between;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .actions {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    width: 100%;
+
+    .btn {
+      padding: 6px 2px;
+      font-size: 12px;
+    }
+  }
+
+  .objective {
+    flex-basis: auto;
+    width: 100%;
+    max-width: 100%;
+  }
+}

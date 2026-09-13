@@ -27,6 +27,13 @@ function playingPair() {
   return run(lobbyOfTwo(), [{ type: 'start', from: 'a' }]).state;
 }
 
+test('host can select Rush and both players receive the same rules at start', () => {
+  const { state } = run(lobbyOfTwo(), [{ type: 'settings', from: 'a', payload: { rules: 'rush' } }]);
+  assert.equal(state.settings.rules, 'rush');
+  const started = run(state, [{ type: 'start', from: 'a' }]);
+  assert.equal(msgFor(started.out, 'start').settings.rules, 'rush');
+});
+
 test('a new room starts empty, in the lobby, with no host', () => {
   const state = createRoom('ABC123');
   assert.equal(state.code, 'ABC123');

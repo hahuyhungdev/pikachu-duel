@@ -57,6 +57,18 @@ export interface RunOutcome {
 export const STORAGE_KEY = 'pikachu-duel/profile';
 export const PROFILE_VERSION = 2;
 
+export function profileStorageKey(userId?: string | null): string {
+  return userId ? `${STORAGE_KEY}/account/${encodeURIComponent(userId)}` : STORAGE_KEY;
+}
+
+type ProfileListener = (profile: Profile, userId: string | null) => void;
+const profileListeners = new Set<ProfileListener>();
+
+export function subscribeProfile(listener: ProfileListener): () => void {
+  profileListeners.add(listener);
+  return () => { profileListeners.delete(listener); };
+}
+
 const MAX_STARS = 3;
 const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -136,20 +148,20 @@ function storage(): Storage | null {
   }
 }
 
-function readRaw(): string | null {
+function readRaw(userId?: string | null): string | null {
   try {
-    return storage()?.getItem(STORAGE_KEY) ?? null;
+    return storage()?.getItem(profileStorageKey(userId)) ?? null;
   } catch {
     return null;
   }
 }
 
-function writeRaw(value: string | null): void {
+function writeRaw(value: string | null, userId?: string | null): void {
   try {
     const store = storage();
     if (!store) return;
-    if (value === null) store.removeItem(STORAGE_KEY);
-    else store.setItem(STORAGE_KEY, value);
+    if (value === null) store.removeItem(profileStorageKey(userId));
+    else store.setItem(profileStorageKey(userId), value);
   } catch {
     // Quota, private mode or a blocked origin: progress is simply not kept.
   }
@@ -256,8 +268,10 @@ function normalize(value: unknown): Profile {
   };
 }
 
-export function loadProfile(): Profile {
-  const raw = readRaw();
+export { normalize as normalizeProfile };
+
+export function loadProfile(userId?: string | null): Profile {
+  const raw = readRaw(userId);
   if (!raw) return createProfile();
   try {
     return normalize(JSON.parse(raw));
@@ -266,17 +280,18 @@ export function loadProfile(): Profile {
   }
 }
 
-export function saveProfile(profile: Profile): void {
+export function saveProfile(profile: Profile, userId?: string | null, notify = true): void {
   try {
-    writeRaw(JSON.stringify(profile));
+    writeRaw(JSON.stringify(profile), userId);
+    if (notify) for (const listener of profileListeners) listener(profile, userId ?? null);
   } catch {
     // A profile that cannot be serialised is dropped rather than fatal.
   }
 }
 
-export function resetProfile(): Profile {
+export function resetProfile(userId?: string | null): Profile {
   const profile = createProfile();
-  saveProfile(profile);
+  saveProfile(profile, userId);
   return profile;
 }
 
@@ -319,8 +334,8 @@ export function isUnlocked(profile: Profile, id: string): boolean {
  * Fold one finished run into the stored profile and report what moved:
  * which records fell, what they used to be, and which unlocks this run earned.
  */
-export function recordRun(result: RunResult, now: Date = new Date()): RunOutcome {
-  const profile = loadProfile();
+export function recordRun(result: RunResult, now: Date = new Date(), userId?: string | null): RunOutcome {
+  const profile = loadProfile(userId);
   const record = profile.modes[result.mode];
 
   const score = toCount(result.score);
@@ -370,7 +385,7 @@ export function recordRun(result: RunResult, now: Date = new Date()): RunOutcome
   const newUnlocks = evaluateUnlocks(profile).filter((unlock) => !alreadyEarned.has(unlock.id));
   profile.unlocks = [...profile.unlocks, ...newUnlocks.map((unlock) => unlock.id)];
 
-  saveProfile(profile);
+  saveProfile(profile, userId);
 
   return { profile, records, previousBest, newUnlocks, dayStreak: profile.dayStreak };
 }

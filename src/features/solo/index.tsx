@@ -15,6 +15,7 @@ import { RunResult } from './components/RunResult';
 import { StageIntro } from './components/StageIntro';
 import { useSolo } from './hooks/useSolo';
 import { useAuth } from '../leaderboard/hooks/useAuth';
+import { useAccountProgress } from '../leaderboard/hooks/useAccountProgress';
 import { AuthModal } from '../leaderboard/components/AuthModal';
 import { LeaderboardModal } from '../leaderboard/components/LeaderboardModal';
 
@@ -23,9 +24,18 @@ export interface SoloGameProps {
 }
 
 export function SoloGame({ onOpenDuel }: SoloGameProps) {
-  const solo = useSolo();
+  const auth = useAuth();
+  const progress = useAccountProgress(auth.user);
+  return <SoloSurface key={auth.user?.id ?? 'guest'} onOpenDuel={onOpenDuel} auth={auth} progress={progress} />;
+}
+
+function SoloSurface({ onOpenDuel, auth, progress }: SoloGameProps & {
+  auth: ReturnType<typeof useAuth>;
+  progress: ReturnType<typeof useAccountProgress>;
+}) {
+  const { user, login, register, logout } = auth;
+  const solo = useSolo(user?.id, progress.profile);
   const { board, hud, round, summary } = solo;
-  const { user, login, register, logout } = useAuth();
 
   const [authOpen, setAuthOpen] = useState(false);
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
@@ -34,7 +44,7 @@ export function SoloGame({ onOpenDuel }: SoloGameProps) {
   const isResultOpen = solo.phase === 'cleared' || solo.phase === 'failed' || solo.phase === 'over';
 
   return (
-    <div className="shell" data-app data-surface="solo">
+    <div className="shell" data-app data-surface="solo" data-in-game={!isMenu ? 'true' : undefined}>
       {hud && (
         <RunHud
           hud={hud}
@@ -81,6 +91,8 @@ export function SoloGame({ onOpenDuel }: SoloGameProps) {
         showDifficulty={solo.showDifficulty}
         profile={solo.profileSummary}
         user={user}
+        syncStatus={progress.status}
+        onRetrySync={progress.retry}
         onSelect={solo.selectMode}
         onDifficulty={solo.setDifficulty}
         onStart={solo.startRun}
@@ -121,6 +133,8 @@ export function SoloGame({ onOpenDuel }: SoloGameProps) {
         onLogin={login}
         onRegister={register}
         onLogout={logout}
+        syncStatus={progress.status}
+        onRetrySync={progress.retry}
       />
 
       <LeaderboardModal

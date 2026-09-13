@@ -1,4 +1,4 @@
-import type { Difficulty, OnlinePeer } from '../../types/duel.types';
+import type { Difficulty, OnlinePeer, DuelRules } from '../../types/duel.types';
 
 interface LobbyOverlayProps {
   isOpen: boolean;
@@ -7,10 +7,11 @@ interface LobbyOverlayProps {
   inviteLink: string;
   peers: OnlinePeer[];
   isHost: boolean;
-  settings: { difficulty: Difficulty; clock: number };
+  settings: { difficulty: Difficulty; clock: number; rules?: DuelRules };
   onCopyInvite: () => void;
   onChangeDifficulty: (difficulty: Difficulty) => void;
   onChangeClock: (clock: number) => void;
+  onChangeRules: (rules: DuelRules) => void;
   onStartDuel: () => void;
   onLeaveRoom: () => void;
 }
@@ -26,6 +27,7 @@ export function LobbyOverlay({
   onCopyInvite,
   onChangeDifficulty,
   onChangeClock,
+  onChangeRules,
   onStartDuel,
   onLeaveRoom,
 }: LobbyOverlayProps) {
@@ -80,7 +82,7 @@ export function LobbyOverlay({
             >
               <option value="easy">Easy — Quick · 8 × 10 · 16 Pokémon</option>
               <option value="normal">Medium — Classic · 9 × 16 · 24 Pokémon</option>
-              <option value="hard">Hard — Grand · 12 × 16 · 24 Pokémon</option>
+              <option value="hard">Hard — Grand · 12 × 16 · 48 Pokémon</option>
             </select>
           </label>
           <label className="field" htmlFor="lobby-clock">
@@ -98,6 +100,14 @@ export function LobbyOverlay({
             </select>
           </label>
         </div>
+
+        <label className="field rules-choice">
+          Rules
+          <select disabled={!isHost} value={settings.rules ?? 'classic'} onChange={(e) => onChangeRules(e.target.value as DuelRules)}>
+            <option value="classic">Classic</option>
+            <option value="rush">Duel Rush — 5s combos, Fever at 5</option>
+          </select>
+        </label>
 
         <div className="panel__actions">
           <button

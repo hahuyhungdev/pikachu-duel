@@ -154,6 +154,19 @@ describe('loadProfile', () => {
 });
 
 describe('saveProfile', () => {
+  it('keeps guest and each account progress isolated across reloads', () => {
+    recordRun(run({ score: 100 }));
+    recordRun(run({ score: 900 }), undefined, 'account-a');
+    recordRun(run({ score: 400 }), undefined, 'account-b');
+    expect(loadProfile().modes.classic.bestScore).toBe(100);
+    expect(loadProfile('account-a').modes.classic.bestScore).toBe(900);
+    expect(loadProfile('account-b').modes.classic.bestScore).toBe(400);
+    expect(loadProfile('new-account').totalPlays).toBe(0);
+    resetProfile('account-b');
+    expect(loadProfile('account-b').totalPlays).toBe(0);
+    expect(loadProfile('account-a').totalPlays).toBe(1);
+  });
+
   it('round-trips a profile through storage', () => {
     const profile = loadProfile();
     profile.totalPairs = 33;

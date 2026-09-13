@@ -9,11 +9,14 @@
  * - Global Leaderboard ranking across all modes (Adventure, Time Attack, Classic, Daily)
  */
 
+import { mergeProgress, normalizeProgress } from '../../src/shared/game/progress.js';
+
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
       'content-type': 'application/json',
+      'cache-control': 'no-store',
       'access-control-allow-origin': '*',
       'access-control-allow-headers': 'Content-Type, Authorization',
       'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -129,6 +132,10 @@ export class GameData {
         return await this.handleSubmitScore(request);
       }
 
+      if (path === '/progress' && ['GET', 'PUT'].includes(request.method)) {
+        return await this.handleProgress(request);
+      }
+
       if (path === '/leaderboard' && request.method === 'GET') {
         return await this.handleGetLeaderboard(request, url);
       }
@@ -168,6 +175,44 @@ export class GameData {
     if (!user) return null;
 
     return { id: user.id, username: user.username, avatar: user.avatar, created_at: user.created_at };
+  }
+
+  async handleProgress(request) {
+    const user = await this.getUserFromAuth(request);
+    if (!user) return json({ error: 'unauthorized' }, 401);
+    const key = `progress:${user.id}`;
+    if (request.method === 'GET') {
+      return json({ ok: true, userId: user.id, profile: normalizeProgress(await this.getKvData(key, null)) });
+    }
+    // Bound the streamed body even when Content-Length is absent or dishonest.
+    const reader = request.body?.getReader();
+    if (!reader) return json({ error: 'invalid_profile' }, 400);
+    const decoder = new TextDecoder();
+    let text = '';
+    let bytes = 0;
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      bytes += chunk.value.byteLength;
+      if (bytes > 32768) {
+        await reader.cancel();
+        return json({ error: 'payload_too_large' }, 413);
+      }
+      text += decoder.decode(chunk.value, { stream: true });
+    }
+    text += decoder.decode();
+    let body;
+    try { body = JSON.parse(text); } catch { return json({ error: 'invalid_json' }, 400); }
+    if (!body?.profile || typeof body.profile !== 'object' || Array.isArray(body.profile)) {
+      return json({ error: 'invalid_profile' }, 400);
+    }
+    const incoming = normalizeProgress(body.profile);
+    const profile = await this.ctx.storage.transaction(async (txn) => {
+      const merged = mergeProgress(await txn.get(key), incoming);
+      await txn.put(key, merged);
+      return merged;
+    });
+    return json({ ok: true, userId: user.id, profile });
   }
 
   async handleRegister(request) {

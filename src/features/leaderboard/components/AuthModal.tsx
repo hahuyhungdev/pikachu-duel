@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AVATARS, avatarSrc } from '../avatars';
 import type { User } from '../leaderboardApi';
+import type { ProgressSyncStatus } from '../hooks/useAccountProgress';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -9,6 +10,8 @@ interface AuthModalProps {
   onLogin: (username: string, pass: string) => Promise<unknown>;
   onRegister: (username: string, pass: string, avatar: string) => Promise<unknown>;
   onLogout: () => void;
+  syncStatus?: ProgressSyncStatus;
+  onRetrySync?: () => void;
 }
 
 export function AuthModal({
@@ -18,6 +21,8 @@ export function AuthModal({
   onLogin,
   onRegister,
   onLogout,
+  syncStatus = 'local',
+  onRetrySync,
 }: AuthModalProps) {
   const [tab, setTab] = useState<'login' | 'register'>('login');
   const [username, setUsername] = useState('');
@@ -75,7 +80,8 @@ export function AuthModal({
                 <span className="auth-profile__date">
                   Tham gia: {new Date(user.createdAt).toLocaleDateString('vi-VN')}
                 </span>
-                <span className="auth-profile__badge">✔ Đã liên kết máy chủ</span>
+                <span className="auth-profile__badge" role="status">{syncStatus === 'synced' ? 'Tiến trình đã lưu vào tài khoản' : syncStatus === 'syncing' ? 'Đang đồng bộ tiến trình…' : 'Tiến trình đang lưu trên thiết bị này'}</span>
+                {syncStatus === 'error' && <button type="button" className="btn" onClick={onRetrySync}>Thử đồng bộ lại</button>}
               </div>
             </div>
 

@@ -35,7 +35,7 @@ import {
   type SoloSession,
 } from '../gameApi';
 import { isMuted, setMuted, sfx } from '../../../shared/audio/sfx';
-import { loadProfile, recordRun, type Profile } from '../../../shared/game/profile';
+import { loadProfile, saveProfile, recordRun, type Profile } from '../../../shared/game/profile';
 import { submitScore } from '../../leaderboard/leaderboardApi';
 import type {
   Difficulty,
@@ -112,10 +112,11 @@ function freshTwists(stage: number): string[] {
   return fresh;
 }
 
-export function useSolo() {
+export function useSolo(userId?: string | null, accountProfile?: Profile) {
   const saved = readSettings();
 
-  const [profile, setProfile] = useState<Profile>(() => loadProfile());
+  const [localProfile, setProfile] = useState<Profile>(() => loadProfile(userId));
+  const profile = accountProfile ?? localProfile;
   const [mode, setMode] = useState<GameMode>(saved.mode ?? 'adventure');
   const [difficulty, setDifficulty] = useState<Difficulty>(saved.difficulty ?? 'normal');
 
@@ -237,21 +238,33 @@ export function useSolo() {
       // Adventure explains each new stage before it starts; Time Attack must
       // never break its own flow, and the other modes only have one board.
       setIntroOpen(nextMode === 'adventure');
+      if (nextMode === 'adventure') {
+        const checkpoint = loadProfile(userId);
+        if (stage > (checkpoint.modes.adventure.bestStage ?? 0)) {
+          checkpoint.modes.adventure.bestStage = stage;
+          saveProfile(checkpoint, userId);
+          setProfile(checkpoint);
+        }
+      }
       return next;
     },
-    [bonusAids.hints, bonusAids.shuffles, clearTimers, difficulty],
+    [bonusAids.hints, bonusAids.shuffles, clearTimers, difficulty, userId],
   );
 
-  const startRun = useCallback(() => {
-    const startRules = modeRules(mode);
-    setHeartsLeft(startRules.hearts);
-    setBonusAids({ hints: 0, shuffles: 0 });
-    setRunScore(0);
-    setRunPairs(0);
-    setRunBestStreak(0);
-    setSummary(null);
-    dealStage(mode, FIRST_STAGE);
-  }, [dealStage, mode]);
+  const startRun = useCallback(
+    (targetStage?: number) => {
+      const startRules = modeRules(mode);
+      setHeartsLeft(startRules.hearts);
+      setBonusAids({ hints: 0, shuffles: 0 });
+      setRunScore(0);
+      setRunPairs(0);
+      setRunBestStreak(0);
+      setSummary(null);
+      const stageToStart = targetStage ?? (mode === 'adventure' && profile.modes.adventure.bestStage > 1 ? profile.modes.adventure.bestStage : FIRST_STAGE);
+      dealStage(mode, stageToStart);
+    },
+    [dealStage, mode, profile.modes.adventure.bestStage],
+  );
 
   /**
    * Fold a finished stage into the run and, when the run itself is finished,
@@ -308,6 +321,14 @@ export function useSolo() {
 
       const runContinues = cleared ? rules.ladder && round.mode === 'adventure' : livesAfter > 0;
 
+      if (cleared && round.mode === 'adventure') {
+        const checkpoint = loadProfile(userId);
+        checkpoint.stageStars[String(round.stage)] = Math.max(checkpoint.stageStars[String(round.stage)] ?? 0, stars);
+        checkpoint.modes.adventure.bestStage = Math.max(checkpoint.modes.adventure.bestStage, round.stage);
+        saveProfile(checkpoint, userId);
+        setProfile(checkpoint);
+      }
+
       const outcomeRecord = runContinues
         ? null
         : recordRun({
@@ -317,7 +338,7 @@ export function useSolo() {
             bestStreak,
             pairs: totalPairs,
             stars,
-          });
+          }, new Date(), userId);
 
       if (outcomeRecord) setProfile(outcomeRecord.profile);
 
@@ -361,7 +382,7 @@ export function useSolo() {
       setPhase(runContinues ? (cleared ? 'cleared' : 'failed') : 'over');
       if (cleared) sfx.win();
     },
-    [dealStage, heartsLeft, round, rules.ladder, runBestStreak, runPairs, runScore, session, showToast, timeLeft],
+    [dealStage, heartsLeft, round, rules.ladder, runBestStreak, runPairs, runScore, session, showToast, timeLeft, userId],
   );
 
   /** The clock. Zen has none, and it never runs behind a panel. */
@@ -564,17 +585,28 @@ export function useSolo() {
     else showToast('No shuffles left');
   }, [introOpen, phase, session, showToast]);
 
-  /** The single button the result screen leads with: next stage, or try again. */
+  /** The single button the result screen leads with: next stage, or try again / resume. */
   const continueRun = useCallback(() => {
     if (!round) return;
     setSummary(null);
-    if (phase === 'cleared') dealStage(round.mode, round.stage + 1);
-    else dealStage(round.mode, round.stage);
+    if (phase === 'cleared') {
+      dealStage(round.mode, round.stage + 1);
+    } else if (phase === 'failed') {
+      dealStage(round.mode, round.stage);
+    } else if (phase === 'over' && round.mode === 'adventure') {
+      const startRules = modeRules('adventure');
+      setHeartsLeft(startRules.hearts);
+      setBonusAids({ hints: 0, shuffles: 0 });
+      setRunScore(0);
+      setRunPairs(0);
+      setRunBestStreak(0);
+      dealStage(round.mode, round.stage);
+    }
   }, [dealStage, phase, round]);
 
   const retryRun = useCallback(() => {
     setSummary(null);
-    startRun();
+    startRun(FIRST_STAGE);
   }, [startRun]);
 
   const changeMode = useCallback(() => {
@@ -615,8 +647,9 @@ export function useSolo() {
       dayStreak: profile.dayStreak,
       totalPairs: profile.totalPairs,
       totalPlays: profile.totalPlays,
-      unlocked: profile.unlocks.length,
+      unlocked: profile.unlocks?.length ?? 0,
       unlockTotal: 8,
+      adventureBestStage: profile.modes?.adventure?.bestStage ?? 1,
     }),
     [profile],
   );
@@ -672,8 +705,14 @@ export function useSolo() {
 
   const continueLabel = useMemo(() => {
     if (phase === 'cleared') return `Next stage ${(round?.stage ?? 0) + 1} →`;
-    const lives = Math.max(0, heartsLeft);
-    return `Try stage ${round?.stage ?? 1} again · ${lives} ${lives === 1 ? 'life' : 'lives'} left`;
+    if (phase === 'failed') {
+      const lives = Math.max(0, heartsLeft);
+      return `Try stage ${round?.stage ?? 1} again · ${lives} ${lives === 1 ? 'life' : 'lives'} left`;
+    }
+    if (phase === 'over' && round?.mode === 'adventure') {
+      return `Resume stage ${round?.stage ?? 1} ↺`;
+    }
+    return 'Try again';
   }, [heartsLeft, phase, round]);
 
   return {
@@ -690,7 +729,7 @@ export function useSolo() {
     modeCards,
     profileSummary,
     showDifficulty: !modeRules(mode).ladder,
-    canContinue: phase === 'cleared' || phase === 'failed',
+    canContinue: phase === 'cleared' || phase === 'failed' || (phase === 'over' && round?.mode === 'adventure'),
     continueLabel,
     stageIntro: round
       ? { stage: round.stage, note: describeStage(round.stage), objective: stageObjective(round.stage).text, fresh: freshTwists(round.stage) }

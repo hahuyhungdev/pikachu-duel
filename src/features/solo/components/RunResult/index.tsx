@@ -10,6 +10,7 @@
 
 import type { CSSProperties } from 'react';
 import type { RunSummary, RunPhase, GameMode } from '../../types/solo.types';
+import styles from './RunResult.module.scss';
 
 interface RunResultProps {
   isOpen: boolean;
@@ -97,8 +98,8 @@ export function RunResult({
   const scoreGap = previousBest.score - summary.runScore;
 
   return (
-    <div className="overlay" data-overlay="run-result" hidden={!isOpen}>
-      <div className="panel panel--run-result" data-phase={phase}>
+    <div className={`${styles.overlay} overlay`} data-overlay="run-result" hidden={!isOpen}>
+      <div className={`${styles.panel} panel panel--run-result`} data-phase={phase}>
         <p className="panel__eyebrow">{summary.modeLabel}</p>
         <p className="result__banner" data-result-banner>
           {headlineFor(phase, summary, isLadder)}
@@ -106,7 +107,7 @@ export function RunResult({
         <p className="panel__lede">{ledeFor(phase, summary, isLadder)}</p>
 
         {showStars ? (
-          <ul className="stars" aria-label={`${summary.stars} of 3 stars`}>
+          <ul className={`${styles.stars} stars`} aria-label={`${summary.stars} of 3 stars`}>
             {STAR_SLOTS.map((index) => (
               <li
                 key={index}
@@ -119,9 +120,9 @@ export function RunResult({
         ) : null}
 
         {((phase === 'cleared' && ((summary.timeBonus && summary.timeBonus > 0) || summary.recoveredHeart || summary.recoveredAids)) || summary.globalRank) ? (
-          <div className="result__time-rewards" data-reward-strip>
+          <div className={`${styles.speedStrip} result__time-rewards`} data-reward-strip>
             {summary.globalRank ? (
-              <div className="time-reward time-reward--rank">
+              <div className={`${styles.rankBadge} time-reward time-reward--rank`}>
                 <span className="time-reward__badge">🏆 Hạng #{summary.globalRank} Toàn Cầu</span>
                 <span className="time-reward__desc">Điểm số đã được đồng bộ lên Bảng Xếp Hạng!</span>
               </div>
@@ -230,7 +231,7 @@ export function RunResult({
           </ul>
         ) : null}
 
-        <div className="panel__actions">
+        <div className={`${styles.actions} panel__actions`}>
           {canContinue ? (
             // The key remounts the button each time the overlay opens, which is
             // what makes autoFocus fire on a panel that is only hidden, not torn down.
@@ -256,7 +257,7 @@ export function RunResult({
             </button>
           ) : null}
           <button className="btn" type="button" data-action="retry-run" onClick={onRetryRun}>
-            New run
+            {isLadder && phase === 'over' ? 'Start from Stage 1' : 'New run'}
           </button>
           <button className="btn" type="button" data-action="change-mode" onClick={onChangeMode}>
             Change mode

@@ -1,0 +1,68 @@
+@use '../../../../styles/tokens' as *;
+@use '../../../../styles/mixins' as *;
+
+.cabinet {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--chrome);
+  border: 1px solid var(--chrome-edge);
+  border-radius: 10px;
+  min-width: 0;
+  box-shadow: none;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--chrome-raised);
+}
+
+.raceCallout {
+  margin: 0;
+  font-weight: 700;
+  color: var(--p1);
+  padding: 4px 10px;
+  font-size: 13px;
+  background: #edf1e8;
+  border-radius: 6px;
+
+  &[data-final='true'] {
+    color: #a12c23;
+    background: #fce5df;
+  }
+}
+
+.rushMeter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+
+  progress {
+    flex: 1;
+    min-width: 32px;
+    height: 7px;
+    accent-color: var(--p1);
+  }
+
+  &[data-fever='true'] {
+    color: #93620a;
+
+    progress {
+      accent-color: #b58214;
+    }
+  }
+
+  small {
+    font-size: 11px;
+  }
+}

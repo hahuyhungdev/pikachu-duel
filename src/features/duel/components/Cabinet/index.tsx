@@ -1,5 +1,6 @@
 import type { DuelMode, PlayerState } from '../../types/duel.types';
 import { Board } from '../Board';
+import styles from './Cabinet.module.scss';
 
 interface CabinetProps {
   player: PlayerState;
@@ -34,6 +35,9 @@ export function Cabinet({ player, opponent, mode, hidden, onPick, onHint, onShuf
   const isPlayerCritical = playerPercent >= 80 && playerPercent < 100;
   const isOpponentCritical = opponentPercent >= 80 && opponentPercent < 100;
   const isTension = hasOpponent && (isPlayerCritical || isOpponentCritical);
+  const pairGap = player.session.matchedPairs - (opponent?.session.matchedPairs ?? 0);
+  const pairsLeft = player.totalPairs - player.session.matchedPairs;
+  const rivalLeft = opponent ? opponent.totalPairs - opponent.session.matchedPairs : 0;
 
   const progressClasses = [
     'duel-progress',
@@ -43,14 +47,14 @@ export function Cabinet({ player, opponent, mode, hidden, onPick, onHint, onShuf
 
   return (
     <section
-      className="cabinet"
+      className={`${styles.cabinet} cabinet`}
       data-cabinet
       data-player={playerNum}
       data-state={player.session.status}
       hidden={hidden}
       data-remote={player.remote ? 'true' : undefined}
     >
-      <header className="cabinet__head">
+      <header className={`${styles.head} cabinet__head`}>
         <div className="who">
           <span className="badge">{badgeText}</span>
           <h2 data-role="name">{player.session.label}</h2>
@@ -72,6 +76,23 @@ export function Cabinet({ player, opponent, mode, hidden, onPick, onHint, onShuf
           </div>
         </dl>
       </header>
+
+      {player.session.rush && !player.remote && (
+        <div className={`${styles.rushMeter} rush-meter`} data-fever={player.session.fever || undefined}>
+          <span>{player.session.fever ? 'FEVER ×2' : 'DUEL RUSH'}</span>
+          <progress aria-label="Combo time remaining" max={5000} value={player.session.comboExpiresAt ? player.comboRemainingMs ?? 0 : 0} />
+          <small>Next pair within 5s</small>
+        </div>
+      )}
+      {hasOpponent && (
+        <p className={`${styles.raceCallout} race-callout`} data-final={pairsLeft <= 4 || rivalLeft <= 4 ? 'true' : undefined}>
+          {pairsLeft === 0
+            ? 'Clear!'
+            : rivalLeft === 0
+            ? 'Rival cleared!'
+            : pairGap === 0 ? 'Neck and neck' : `${Math.abs(pairGap)} pairs ${pairGap > 0 ? 'ahead' : 'behind'}`}
+        </p>
+      )}
 
       <div className={progressClasses} data-role="duel-progress">
         <div className="duel-progress__readout">

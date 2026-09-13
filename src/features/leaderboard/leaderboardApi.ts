@@ -3,7 +3,8 @@
  * Connects to the Cloudflare Worker GameData backend with offline resilience.
  */
 
-import { relayUrl } from '../../net/config.js';
+import { RELAY_URL } from '../../net/config.js';
+import type { Profile } from '../../shared/game/profile';
 
 export interface User {
   id: string;
@@ -42,6 +43,7 @@ export interface LeaderboardResponse {
 const TOKEN_KEY = 'pikachu/auth_token';
 const USER_KEY = 'pikachu/auth_user';
 const OFFLINE_SCORES_KEY = 'pikachu/offline_scores';
+let authRevision = 0;
 
 export function getStoredToken(): string | null {
   try {
@@ -61,6 +63,7 @@ export function getStoredUser(): User | null {
 }
 
 export function setStoredAuth(token: string, user: User): void {
+  authRevision += 1;
   try {
     localStorage.setItem(TOKEN_KEY, token);
     localStorage.setItem(USER_KEY, JSON.stringify(user));
@@ -70,6 +73,7 @@ export function setStoredAuth(token: string, user: User): void {
 }
 
 export function clearStoredAuth(): void {
+  authRevision += 1;
   try {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
@@ -79,19 +83,29 @@ export function clearStoredAuth(): void {
 }
 
 function getApiBase(): string {
-  const base = relayUrl();
-  return base ? base.replace(/\/+$/, '') : '';
+  // Room invite links may select a relay, but must never select where passwords
+  // and account tokens are sent. Only local development can use a local override.
+  const localHosts = ['localhost', '127.0.0.1', '[::1]'];
+  const override = new URLSearchParams(location.search).get('server');
+  if (override && localHosts.includes(location.hostname)) {
+    try {
+      const url = new URL(override);
+      if (localHosts.includes(url.hostname) && ['http:', 'https:'].includes(url.protocol)
+        && !url.username && !url.password) return url.origin;
+    } catch { /* Untrusted query values fall back to the configured backend. */ }
+  }
+  return RELAY_URL.replace(/\/+$/, '');
 }
 
-async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function apiFetch<T>(path: string, options: RequestInit = {}, authToken = getStoredToken()): Promise<T> {
   const base = getApiBase();
-  const token = getStoredToken();
+  const token = authToken;
   const headers = new Headers(options.headers || {});
   headers.set('Content-Type', 'application/json');
   if (token) headers.set('Authorization', `Bearer ${token}`);
 
   const url = `${base}/api${path}`;
-  const response = await fetch(url, { ...options, headers });
+  const response = await fetch(url, { ...options, headers, redirect: 'error' });
   const data = await response.json();
   if (!response.ok) {
     throw new Error(data.message || data.error || 'Network request failed');
@@ -99,29 +113,48 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
   return data as T;
 }
 
+export interface AccountProgressResponse {
+  userId: string;
+  profile: Profile;
+}
+
+export function fetchAccountProgress(token: string, signal?: AbortSignal): Promise<AccountProgressResponse> {
+  return apiFetch('/progress', { signal, cache: 'no-store' }, token);
+}
+
+export function putAccountProgress(profile: Profile, token: string, signal?: AbortSignal): Promise<AccountProgressResponse> {
+  return apiFetch('/progress', { method: 'PUT', body: JSON.stringify({ profile }), signal }, token);
+}
+
 export async function register(username: string, password: string, avatar: string): Promise<{ user: User; token: string }> {
+  const revision = ++authRevision;
   const data = await apiFetch<{ ok: boolean; token: string; user: User }>('/auth/register', {
     method: 'POST',
     body: JSON.stringify({ username, password, avatar }),
   });
+  if (revision !== authRevision) throw new Error('Session changed');
   setStoredAuth(data.token, data.user);
   return { user: data.user, token: data.token };
 }
 
 export async function login(username: string, password: string): Promise<{ user: User; token: string }> {
+  const revision = ++authRevision;
   const data = await apiFetch<{ ok: boolean; token: string; user: User }>('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ username, password }),
   });
+  if (revision !== authRevision) throw new Error('Session changed');
   setStoredAuth(data.token, data.user);
   return { user: data.user, token: data.token };
 }
 
 export async function fetchMe(): Promise<{ user: User; stats: UserStats } | null> {
   const token = getStoredToken();
+  const revision = authRevision;
   if (!token) return null;
   try {
     const data = await apiFetch<{ ok: boolean; user: User; stats: UserStats }>('/auth/me');
+    if (revision !== authRevision || getStoredToken() !== token) return null;
     setStoredAuth(token, data.user);
     return data;
   } catch {

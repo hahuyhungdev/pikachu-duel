@@ -1,5 +1,6 @@
 export type Difficulty = 'easy' | 'normal' | 'hard';
 export type DuelMode = 'solo' | 'local' | 'online';
+export type DuelRules = 'classic' | 'rush';
 
 export interface Point {
   r: number;
@@ -28,6 +29,9 @@ export interface PlayerSession {
   hintsLeft: number;
   shufflesLeft: number;
   reshuffles: number;
+  rush?: boolean;
+  comboExpiresAt?: number;
+  fever?: boolean;
 }
 
 export interface TracePath {
@@ -60,6 +64,7 @@ export interface PlayerState {
   remote?: boolean;
   remoteState?: string;
   finishedAt?: number | null;
+  comboRemainingMs?: number;
 }
 
 export interface DuelSetup {
@@ -68,6 +73,7 @@ export interface DuelSetup {
   difficulty: Difficulty;
   clock: number;
   level?: number;
+  rules?: DuelRules;
 }
 
 export interface ActiveDuel {
@@ -95,7 +101,7 @@ export interface OnlineState {
   hostId: string | null;
   foeId: string | null;
   players: OnlinePeer[];
-  settings: { difficulty: Difficulty; clock: number };
+  settings: { difficulty: Difficulty; clock: number; rules?: DuelRules };
   status: 'lobby' | 'playing' | 'over';
   linkState?: string;
   link: string;

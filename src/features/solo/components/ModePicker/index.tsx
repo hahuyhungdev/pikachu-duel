@@ -16,8 +16,11 @@ import { FEVER_MULTIPLIER, FEVER_STREAK } from '../../../../game/session.js';
 import { BOMB_PENALTY_SECONDS, CHRONO_FREEZE_SECONDS, CHRONO_SURGE_SECONDS, GOLD_MULTIPLIER } from '../../../../game/marks.js';
 import { GRAVITY_LABELS } from '../../../../game/gravity.js';
 import { avatarSrc } from '../../../leaderboard/avatars';
+import { ICONS } from '../../../../game/icons.js';
 import type { User } from '../../../leaderboard/leaderboardApi';
+import type { ProgressSyncStatus } from '../../../leaderboard/hooks/useAccountProgress';
 import type { Difficulty, GameMode, ModeCard, ProfileSummary } from '../../types/solo.types';
+import styles from './ModePicker.module.scss';
 
 interface ModePickerProps {
   isOpen: boolean;
@@ -28,9 +31,11 @@ interface ModePickerProps {
   showDifficulty: boolean;
   profile: ProfileSummary;
   user?: User | null;
+  syncStatus?: ProgressSyncStatus;
+  onRetrySync?: () => void;
   onSelect: (mode: GameMode) => void;
   onDifficulty: (difficulty: Difficulty) => void;
-  onStart: () => void;
+  onStart: (targetStage?: number) => void;
   onOpenDuel: () => void;
   onOpenAuth?: () => void;
   onOpenLeaderboard?: () => void;
@@ -55,6 +60,8 @@ export function ModePicker({
   showDifficulty,
   profile,
   user,
+  syncStatus = 'local',
+  onRetrySync,
   onSelect,
   onDifficulty,
   onStart,
@@ -62,17 +69,21 @@ export function ModePicker({
   onOpenAuth,
   onOpenLeaderboard,
 }: ModePickerProps) {
-  const isFirstTime = profile.totalPlays === 0;
-  const [guideOpen, setGuideOpen] = useState(isFirstTime);
+  const [guideOpen, setGuideOpen] = useState(false);
 
   const selectedCard = modes.find((card) => card.id === selected);
+  const bestStage = profile?.adventureBestStage ?? 1;
   const startLabel =
-    selectedCard?.spent && selected === 'daily' ? "Replay today's board" : START_LABEL[selected];
+    selectedCard?.spent && selected === 'daily'
+      ? "Replay today's board"
+      : selected === 'adventure' && bestStage > 1
+      ? `Resume Stage ${bestStage}`
+      : START_LABEL[selected];
 
   return (
-    <div className="overlay" data-overlay="mode-picker" hidden={!isOpen}>
-      <div className="panel panel--modes">
-        <div className="menu-cloud-bar">
+    <div className={`${styles.overlay} overlay`} data-overlay="mode-picker" hidden={!isOpen}>
+      <div className={`${styles.panel} panel panel--modes`}>
+        <div className={`${styles.menuCloudBar} menu-cloud-bar`}>
           <button
             className="btn btn--user-badge"
             type="button"
@@ -90,7 +101,7 @@ export function ModePicker({
                 <span>{user.username}</span>
               </>
             ) : (
-              <span>👤 Đăng nhập / Hồ sơ</span>
+              <span>Đăng nhập / Hồ sơ</span>
             )}
           </button>
 
@@ -100,19 +111,56 @@ export function ModePicker({
             data-action="open-leaderboard"
             onClick={onOpenLeaderboard}
           >
-            🏆 Bảng Xếp Hạng
+            Bảng xếp hạng
           </button>
         </div>
 
-        <div className="panel__eyebrow">Solo run</div>
-        <h1>Pick your board</h1>
-        <p className="panel__lede">Same matching rules every time. Only the pressure changes.</p>
+        <p className="save-status" role="status" data-sync={syncStatus}>
+          {syncStatus === 'local' ? 'Guest progress stays on this browser. Sign in to save to your account.'
+            : syncStatus === 'synced' ? 'Progress saved to your account'
+            : syncStatus === 'syncing' ? 'Syncing your progress…'
+            : 'Saved on this device. Account sync unavailable.'}
+          {syncStatus === 'error' && <button type="button" className="btn" onClick={onRetrySync}>Retry sync</button>}
+        </p>
 
-        <fieldset className="mode-list">
+        <div className={`${styles.hero} menu-hero`}>
+          <div>
+            <div className="panel__eyebrow">Pokémon matching club · 01</div>
+            <h1>Pikachu<span className={`${styles.heroAccent} menu-hero__accent`}>Play your next move.</span></h1>
+            <p className="panel__lede">Find a pair. Find your rhythm. Beat your best.</p>
+          </div>
+          <div className={`${styles.mascot} menu-mascot`} aria-hidden="true">
+            <img src={ICONS[0].src} alt="" />
+            <span>48 Pokémon to discover</span>
+          </div>
+        </div>
+
+        <div className={`${styles.startCard} menu-start`}>
+          <div>
+            <span className="panel__eyebrow">Your next challenge</span>
+            <strong>{selectedCard?.label}</strong>
+            <p>{selectedCard?.blurb}</p>
+            {selected === 'adventure' && bestStage > 1 && (
+              <button
+                type="button"
+                className="btn btn--quiet"
+                style={{ padding: '2px 8px', fontSize: '12px', marginTop: '4px' }}
+                onClick={() => onStart(1)}
+              >
+                Start from Stage 1
+              </button>
+            )}
+          </div>
+          <button className="btn btn--retry" type="button" data-action="start" onClick={() => onStart(selected === 'adventure' && bestStage > 1 ? bestStage : undefined)}>
+            {startLabel} <span aria-hidden="true">→</span>
+          </button>
+        </div>
+
+        <fieldset className={`${styles.modeList} mode-list`}>
           <legend className="mode-list__legend">Mode</legend>
           {modes.map((card) => (
             <label
-              className="mode-card"
+              className={`${styles.modeCard} mode-card`}
               key={card.id}
               data-mode={card.id}
               data-selected={card.id === selected ? 'true' : 'false'}
@@ -169,7 +217,7 @@ export function ModePicker({
                     {preset.difficultyLabel} · {preset.label}
                   </span>
                   <span className="difficulty-option__size">
-                    {preset.rows}×{preset.cols}
+                    {preset.rows}×{preset.cols} · {preset.iconCount} Pokémon
                   </span>
                 </label>
               );
@@ -242,9 +290,6 @@ export function ModePicker({
         </dl>
 
         <div className="panel__actions">
-          <button className="btn btn--retry" type="button" data-action="start" onClick={onStart}>
-            {startLabel}
-          </button>
           <button
             className="btn btn--quiet"
             type="button"

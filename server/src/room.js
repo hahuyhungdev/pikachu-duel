@@ -196,6 +196,7 @@ export function handle(state, event) {
         state.settings.difficulty = payload.difficulty === 'medium' ? 'normal' : payload.difficulty;
       }
       if (CLOCKS.includes(Number(payload.clock))) state.settings.clock = Number(payload.clock);
+      if (payload.rules === 'classic' || payload.rules === 'rush') state.settings.rules = payload.rules;
       return { state, out: [{ to: 'all', msg: { t: 'settings', settings: { ...state.settings } } }] };
     }
 
