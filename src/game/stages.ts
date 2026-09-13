@@ -1,0 +1,242 @@
+/**
+ * The Adventure ladder — deterministic progression and stage generation.
+ *
+ * Each stage configuration is an immutable, pure function of its stage number:
+ * board dimensions, gravity patterns, special hazards (bomb, ice, gold, chrono),
+ * allotted clock, and star scoring thresholds are calculated deterministically.
+ */
+
+import { MAX_ICONS } from './icons.ts';
+import type { GravityMode } from './gravity.ts';
+import { GRAVITY_LABELS, GRAVITY_MODES } from './gravity.ts';
+
+/** Starting stage index for Adventure mode. */
+export const FIRST_STAGE = 1;
+
+/** Stage index where each mechanic or special hazard is introduced. */
+export const INTRODUCES = {
+  gravity: 4,
+  gold: 3,
+  chrono: 5,
+  ice: 6,
+  bomb: 9,
+} as const;
+
+/** Canonical board grid shapes on the progression ladder. */
+const SHAPES: readonly { readonly rows: number; readonly cols: number }[] = [
+  { rows: 6, cols: 8 },
+  { rows: 6, cols: 10 },
+  { rows: 8, cols: 10 },
+  { rows: 8, cols: 12 },
+  { rows: 8, cols: 14 },
+  { rows: 9, cols: 16 },
+  { rows: 10, cols: 16 },
+  { rows: 12, cols: 16 },
+] as const;
+
+/** Gravity variants in rotational order on the ladder. */
+const GRAVITY_ROTATION: readonly GravityMode[] = GRAVITY_MODES.filter(
+  (mode): mode is Exclude<GravityMode, 'none'> => mode !== 'none'
+);
+
+/** Progression formula constants */
+const BASE_SECONDS_PER_PAIR = 6.5;
+const STAGE_SECONDS_DECREMENT = 0.16;
+const MIN_SECONDS_PER_PAIR = 2.6;
+
+const SILVER_MULTIPLIER_PER_PAIR = 130;
+const GOLD_MULTIPLIER_PER_PAIR = 190;
+const GOLD_BONUS_PER_STAGE = 40;
+
+const MIN_STAGE_ICONS = 8;
+const BASE_STAGE_ICONS = 10;
+
+const BASE_STAGE_BOMB_FUSE = 16;
+const MIN_STAGE_BOMB_FUSE = 6;
+
+/** Star scoring requirements for a stage. */
+export interface StageStarThresholds {
+  silver: number;
+  gold: number;
+}
+
+/** Complete configuration recipe for an Adventure stage. */
+export interface StageConfig {
+  stage: number;
+  rows: number;
+  cols: number;
+  pairs: number;
+  iconCount: number;
+  clock: number;
+  hints: number;
+  shuffles: number;
+  gravity: GravityMode;
+  gold: number;
+  chrono: number;
+  ice: number;
+  bomb: number;
+  bombFuse: number;
+  stars: StageStarThresholds;
+}
+
+/** Objective description presented to players in the HUD. */
+export interface StageObjective {
+  target: number;
+  text: string;
+  pairs: number;
+}
+
+/** Optional parameters when resolving stage configuration. */
+export interface StageConfigOptions {
+  portrait?: boolean;
+}
+
+/** Options for calculating earned stars upon stage completion. */
+export interface StageStarsOptions {
+  cleared?: boolean;
+  score?: number;
+}
+
+/**
+ * Normalizes and clamps the stage number to valid positive bounds.
+ */
+function clampStage(stage: unknown): number {
+  const n = Math.trunc(Number(stage));
+  return Number.isFinite(n) && n > FIRST_STAGE ? n : FIRST_STAGE;
+}
+
+/**
+ * Selects the board dimension for the specified stage number,
+ * swapping rows/cols if portrait is enabled.
+ */
+function shapeFor(stage: number, { portrait = false }: StageConfigOptions = {}): { rows: number; cols: number } {
+  const step = Math.min(SHAPES.length - 1, Math.floor((stage - FIRST_STAGE) / 2));
+  const base = SHAPES[step];
+  if (portrait && base.cols > base.rows) {
+    return { rows: base.cols, cols: base.rows };
+  }
+  return { rows: base.rows, cols: base.cols };
+}
+
+/**
+ * Calculates allotted seconds per matched pair.
+ */
+function secondsPerPair(stage: number): number {
+  const eased = BASE_SECONDS_PER_PAIR - (stage - FIRST_STAGE) * STAGE_SECONDS_DECREMENT;
+  return Math.max(MIN_SECONDS_PER_PAIR, eased);
+}
+
+/**
+ * Computes scaling hazard count starting from a given introduction stage.
+ */
+function countFor(stage: number, from: number, per: number, cap: number): number {
+  if (stage < from) return 0;
+  return Math.min(cap, 1 + Math.floor((stage - from) / per));
+}
+
+/**
+ * Produces the complete stage recipe for a given stage number.
+ *
+ * @param stage - The 1-based stage number.
+ * @param options - Viewport options (portrait orientation).
+ * @returns Deterministic `StageConfig`.
+ */
+export function stageConfig(stage: number, { portrait = false }: StageConfigOptions = {}): StageConfig {
+  const n = clampStage(stage);
+  const { rows, cols } = shapeFor(n, { portrait });
+  const pairs = (rows * cols) / 2;
+
+  const gravity: GravityMode =
+    n < INTRODUCES.gravity
+      ? 'none'
+      : GRAVITY_ROTATION[Math.floor((n - INTRODUCES.gravity) / 2) % GRAVITY_ROTATION.length];
+
+  const gold = countFor(n, INTRODUCES.gold, 3, 6);
+  const chrono = countFor(n, INTRODUCES.chrono, 4, 3);
+  const ice = countFor(n, INTRODUCES.ice, 4, 6);
+  const bomb = countFor(n, INTRODUCES.bomb, 5, 3);
+
+  // Aids decrease over the initial 10 stages and plateau at 1 each
+  const hints = Math.max(1, 3 - Math.floor((n - FIRST_STAGE) / 5));
+  const shuffles = Math.max(1, 3 - Math.floor((n - FIRST_STAGE) / 6));
+
+  const silver = Math.round(pairs * SILVER_MULTIPLIER_PER_PAIR);
+  const goldScore = Math.round(pairs * GOLD_MULTIPLIER_PER_PAIR + n * GOLD_BONUS_PER_STAGE);
+
+  return {
+    stage: n,
+    rows,
+    cols,
+    pairs,
+    iconCount: Math.min(MAX_ICONS, Math.max(MIN_STAGE_ICONS, Math.min(pairs, BASE_STAGE_ICONS + Math.floor(n / 2)))),
+    clock: Math.round(pairs * secondsPerPair(n)),
+    hints,
+    shuffles,
+    gravity,
+    gold,
+    chrono,
+    ice,
+    bomb,
+    bombFuse: bomb > 0 ? Math.max(MIN_STAGE_BOMB_FUSE, BASE_STAGE_BOMB_FUSE - n) : 0,
+    stars: { silver, gold: goldScore },
+  };
+}
+
+/**
+ * Generates human-readable stage objective text for the HUD.
+ *
+ * @param stage - Stage number.
+ * @returns `StageObjective` descriptor.
+ */
+export function stageObjective(stage: number): StageObjective {
+  const { stars, pairs } = stageConfig(stage);
+  return {
+    target: stars.gold,
+    text: `Clear the board — ${stars.gold.toLocaleString('en-US')} pts for three stars`,
+    pairs,
+  };
+}
+
+/**
+ * Computes earned star count (0 to 3) based on stage outcome and final score.
+ *
+ * @param stage - Stage number.
+ * @param options - Outcome flags and score.
+ * @returns 0 if not cleared, 1 for clearing, 2 for silver score, 3 for gold score.
+ */
+export function stageStars(stage: number, { cleared = false, score = 0 }: StageStarsOptions = {}): number {
+  if (!cleared) return 0;
+  const { stars } = stageConfig(stage);
+  if (score >= stars.gold) return 3;
+  if (score >= stars.silver) return 2;
+  return 1;
+}
+
+/**
+ * Summarizes the stage rules and hazards in a single string for HUD display.
+ *
+ * @param stage - Stage number.
+ * @returns Concise summary string.
+ */
+export function describeStage(stage: number): string {
+  const config = stageConfig(stage);
+  const notes = [`${config.rows}×${config.cols}`];
+
+  if (config.gravity !== 'none') {
+    notes.push(GRAVITY_LABELS[config.gravity]);
+  }
+  if (config.gold > 0) {
+    notes.push(`${config.gold} gold`);
+  }
+  if (config.chrono > 0) {
+    notes.push(`${config.chrono} chrono`);
+  }
+  if (config.ice > 0) {
+    notes.push(`${config.ice} iced`);
+  }
+  if (config.bomb > 0) {
+    notes.push(`${config.bomb} bomb${config.bomb > 1 ? 's' : ''}`);
+  }
+
+  return notes.join(' · ');
+}

@@ -12,8 +12,14 @@ export interface Point {
 export interface BoardData {
   rows: number;
   cols: number;
-  cells: Uint8Array;
+  stride: number;
+  cells: Int32Array;
   remaining: number;
+  index: (r: number, c: number) => number;
+  marks?: Int32Array;
+  fuses?: Int32Array;
+  seed?: number;
+  iconCount?: number;
 }
 
 export interface PlayerSession {
@@ -34,6 +40,10 @@ export interface PlayerSession {
   rush?: boolean;
   comboExpiresAt?: number;
   fever?: boolean;
+  gravity?: string;
+  tier?: number;
+  feverRewarded?: boolean;
+  timeGain?: { match: number; fever: number };
 }
 
 export interface TracePath {

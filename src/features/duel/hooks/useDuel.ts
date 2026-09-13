@@ -167,8 +167,10 @@ function buildPlayerState(
         board: {
           rows: preset.rows,
           cols: preset.cols,
-          cells: new Uint8Array(),
+          stride: preset.cols + 2,
+          cells: new Int32Array((preset.cols + 2) * (preset.rows + 2)),
           remaining: totalPairs * 2,
+          index: (r: number, c: number) => r * (preset.cols + 2) + c,
         },
         status: 'playing',
         selected: null,
@@ -523,7 +525,7 @@ export function useDuel() {
                 ...player.session,
                 board: {
                   ...player.session.board,
-                  cells: new Uint8Array(player.session.board.cells),
+                  cells: new Int32Array(player.session.board.cells),
                 },
               },
             };
@@ -648,7 +650,7 @@ export function useDuel() {
           ...player.session,
           board: {
             ...player.session.board,
-            cells: new Uint8Array(player.session.board.cells),
+            cells: new Int32Array(player.session.board.cells),
           },
         },
       };

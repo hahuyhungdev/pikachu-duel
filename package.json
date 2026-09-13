@@ -6,7 +6,7 @@
   "description": "Two-player Pikachu (Onet connect) tile-matching race",
   "scripts": {
     "test": "npm run test:core && npm run test:ui",
-    "test:core": "node --test \"tests/**/*.test.js\"",
+    "test:core": "node --experimental-strip-types --test \"tests/**/*.test.js\"",
     "test:ui": "vitest run",
     "test:watch": "vitest",
     "dev": "vite --host 127.0.0.1",
