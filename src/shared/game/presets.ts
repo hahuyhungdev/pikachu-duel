@@ -6,7 +6,7 @@
  * level scaling formulas.
  */
 
-import { MAX_ICONS } from '../../game/icons.ts';
+import { COMPACT_ICON_LIMIT, MAX_ICONS } from '../../game/icons.ts';
 import type { Difficulty } from '../types/board.types.ts';
 
 /** Board presets by difficulty */
@@ -116,11 +116,12 @@ export function normalizeDifficulty(difficulty: string): Difficulty {
  */
 export function getPreset(difficulty: string, { portrait = false }: GetPresetOptions = {}): DifficultyPreset {
   const base = PRESETS[normalizeDifficulty(difficulty)];
-  if (portrait && base.cols > base.rows) {
+  if (portrait) {
     return {
       ...base,
-      rows: base.cols,
-      cols: base.rows,
+      rows: base.cols > base.rows ? base.cols : base.rows,
+      cols: base.cols > base.rows ? base.rows : base.cols,
+      iconCount: Math.min(base.iconCount, COMPACT_ICON_LIMIT),
     };
   }
   return base;

@@ -90,6 +90,15 @@ test('buildRound for classic uses the chosen preset and ignores the ladder', () 
   assert.equal(round.gold + round.ice + round.bomb, 0);
 });
 
+test('portrait mobile rounds reuse fewer Pokemon so matches are easier to scan', () => {
+  const adventure = buildRound({ mode: 'adventure', stage: 1, seed: 7, portrait: true });
+  const classic = buildRound({ mode: 'classic', difficulty: 'normal', seed: 7, portrait: true });
+
+  assert.equal(adventure.iconCount, 12);
+  assert.equal(adventure.iconPool.length, 12);
+  assert.equal(classic.iconCount, 12);
+});
+
 test('buildRound for Zen hands out no clock at all', () => {
   const round = buildRound({ mode: 'zen', difficulty: 'normal', seed: 1 });
   assert.equal(round.timed, false);

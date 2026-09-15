@@ -14,6 +14,7 @@ import { isRelayConfigured, newRoomCode, inviteLink } from '../../../net/config.
 import { isMuted, setMuted, sfx } from '../../../shared/audio/sfx';
 import {
   calculateNextLevel,
+  getPreset,
   normalizeDifficulty,
   PRESETS,
 } from '../../../shared/game/presets.js';
@@ -146,6 +147,13 @@ function getInitialSetup(): { setup: DuelSetup; seed: number } | null {
   };
 }
 
+function usesCompactPortraitBoard(mode: DuelMode): boolean {
+  return mode !== 'online'
+    && typeof window !== 'undefined'
+    && window.innerWidth <= 680
+    && window.innerHeight > window.innerWidth;
+}
+
 function buildPlayerState(
   index: number,
   setup: DuelSetup,
@@ -153,7 +161,7 @@ function buildPlayerState(
   isRemote = false,
   remoteName = '',
 ): PlayerState {
-  const preset = PRESETS[setup.difficulty] ?? PRESETS.normal;
+  const preset = getPreset(setup.difficulty, { portrait: usesCompactPortraitBoard(setup.mode) });
   const totalPairs = (preset.rows * preset.cols) / 2;
   const label = isRemote
     ? remoteName

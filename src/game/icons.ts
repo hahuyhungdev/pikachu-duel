@@ -8,6 +8,9 @@
 /** Empty cell identifier representing a cleared or vacant board cell. */
 export const EMPTY_CELL_VALUE = 0;
 
+/** Maximum number of identities shown together on compact portrait boards. */
+export const COMPACT_ICON_LIMIT = 12;
+
 /** Structure describing a playable Pokémon tile sprite. */
 export interface IconDefinition {
   /** Display label / Pokémon name. */

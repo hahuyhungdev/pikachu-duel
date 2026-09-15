@@ -525,3 +525,55 @@ body:has([data-in-game='true']) {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
 }
+
+/* Compact/touch play favors scanning speed and stable paint over arcade spectacle. */
+@media (max-width: 680px), (pointer: coarse) {
+  body {
+    background-attachment: scroll;
+    background-image: none;
+  }
+
+  .shell[data-in-game='true'] .arena:not([data-mode='solo']) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .tile {
+    transition: none;
+    box-shadow: 0 1px 0 #1b2612;
+  }
+
+  .tile__sprite,
+  .tileSprite,
+  .tile[data-mark] .tile__sprite {
+    filter: none;
+  }
+
+  .tile[data-hint='true'] {
+    animation: none !important;
+    background: #dff7f5 !important;
+    border-color: #087f8f !important;
+    box-shadow: 0 0 0 2px #06b6d4 !important;
+  }
+
+  .combo[data-tier='3'] .combo__count,
+  .combo[data-fever='true'] .combo__count,
+  .arena[data-fever='true'] .board::after,
+  .board[data-shake],
+  .tile[data-fuse-critical='true'],
+  .tile[data-fuse-critical='true']::before,
+  .tile[data-mark='bomb']::before,
+  .tile[data-cracking='true'],
+  .tile[data-falling='true'],
+  .clock[data-critical='true'],
+  .clock[data-frozen='true'],
+  .clock[data-overtime='true'] {
+    animation: none !important;
+  }
+
+  .board[data-shake] { will-change: auto; }
+  .arena[data-fever='true'] .board::after { opacity: 0.72; }
+  .burst,
+  .floater { display: none; }
+}

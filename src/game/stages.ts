@@ -6,7 +6,7 @@
  * allotted clock, and star scoring thresholds are calculated deterministically.
  */
 
-import { MAX_ICONS } from './icons.ts';
+import { COMPACT_ICON_LIMIT, MAX_ICONS } from './icons.ts';
 import type { GravityMode } from './gravity.ts';
 import { GRAVITY_LABELS, GRAVITY_MODES } from './gravity.ts';
 
@@ -213,10 +213,11 @@ export function stageConfig(stage: number, { portrait = false }: StageConfigOpti
   const silver = Math.round(pairs * SILVER_MULTIPLIER_PER_PAIR);
   const goldScore = Math.round(pairs * GOLD_MULTIPLIER_PER_PAIR + n * GOLD_BONUS_PER_STAGE);
 
-  const iconCount = Math.min(
+  const fullIconCount = Math.min(
     MAX_ICONS,
     Math.max(MIN_STAGE_ICONS, Math.min(pairs, BASE_STAGE_ICONS + Math.floor((n - 1) * 1.5)))
   );
+  const iconCount = portrait ? Math.min(fullIconCount, COMPACT_ICON_LIMIT) : fullIconCount;
   const iconPool = stageIconPool(n, iconCount);
 
   return {

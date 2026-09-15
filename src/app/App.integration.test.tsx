@@ -28,6 +28,8 @@ describe('App core duel interactions', () => {
   beforeEach(() => {
     window.localStorage.clear();
     window.history.replaceState({}, '', '/');
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 768 });
   });
 
   it('starts the default 16 x 9 duel and clears a hinted pair through real tile clicks', async () => {
@@ -60,6 +62,20 @@ describe('App core duel interactions', () => {
       expect(hintedTiles[0]).toHaveAttribute('data-empty', 'true');
       expect(hintedTiles[1]).toHaveAttribute('data-empty', 'true');
     });
+  });
+
+  it('limits the local mobile duel roster while keeping the full 16 x 9 board', () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 375 });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 667 });
+
+    const { playerOne } = startDuel();
+    const mobileTiles = tiles(playerOne);
+    const identities = new Set(
+      mobileTiles.map((tile) => tile.getAttribute('aria-label')?.split(', row ')[0]),
+    );
+
+    expect(mobileTiles).toHaveLength(144);
+    expect(identities).toHaveLength(12);
   });
 
   it('deselects a tile when the same tile is clicked twice', () => {
