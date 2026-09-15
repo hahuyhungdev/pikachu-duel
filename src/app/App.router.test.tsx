@@ -14,6 +14,31 @@ describe('App React Router and Admin Stage Controller', () => {
     expect(screen.getByRole('button', { name: /start adventure/i })).toBeInTheDocument();
   });
 
+  it('keeps GitHub Pages navigation inside the /pikachu-duel base path', async () => {
+    window.history.replaceState({}, '', '/pikachu-duel/');
+    render(<App />);
+
+    expect(await screen.findByRole('button', { name: /start adventure/i })).toBeInTheDocument();
+    expect(window.location.pathname).toMatch(/^\/pikachu-duel\/?$/);
+
+    fireEvent.click(screen.getByRole('button', { name: /Two players.*Open Duel/i }));
+    expect(await screen.findByRole('button', { name: /start duel/i })).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/pikachu-duel/duel');
+
+    fireEvent.click(screen.getByRole('button', { name: /Solo modes/i }));
+    expect(await screen.findByRole('button', { name: /start adventure/i })).toBeInTheDocument();
+    expect(window.location.pathname).toMatch(/^\/pikachu-duel\/?$/);
+  });
+
+  it('restores a GitHub Pages deep route before the router renders', async () => {
+    window.history.replaceState({}, '', '/pikachu-duel/?__route=%2Fduel');
+    render(<App />);
+
+    expect(await screen.findByRole('button', { name: /start duel/i })).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/pikachu-duel/duel');
+    expect(window.location.search).toBe('');
+  });
+
   it('navigates to the /admin route and renders the Admin Stage Controller', async () => {
     window.history.replaceState({}, '', '/admin');
     render(<App />);

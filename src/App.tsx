@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { SoloGame } from './features/solo';
 import { AdminPage } from './features/admin';
+import { resolveRouterBasename, restoreGitHubPagesRoute } from './app/githubPagesRouter';
 
 const DuelGame = lazy(() => import('./features/duel').then((m) => ({ default: m.DuelGame })));
 
@@ -83,8 +84,10 @@ export function AppRoutes() {
 }
 
 export default function App() {
+  restoreGitHubPagesRoute();
+
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={resolveRouterBasename()}>
       <AppRoutes />
     </BrowserRouter>
   );

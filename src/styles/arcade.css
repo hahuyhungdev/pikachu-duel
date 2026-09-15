@@ -343,7 +343,14 @@ body { background: var(--desk); }
 .rush-meter[data-fever] { color: #93620a; }
 .rush-meter[data-fever] progress { accent-color: #b58214; }
 .rush-meter small { font-size: 11px; }
-.btn--surface-back { margin: 8px 12px 0; min-height: 38px; padding: 6px 12px; font-size: 13px; }
+.btn--surface-back {
+  position: relative;
+  z-index: 61;
+  margin: 8px 12px 0;
+  min-height: 38px;
+  padding: 6px 12px;
+  font-size: 13px;
+}
 
 /* Eye-level centering and no-scroll during active game */
 body:has([data-in-game='true']) {

@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Opening Pikachu Duel…</title>
+</head>
+<body>
+  <p>Opening Pikachu Duel…</p>
+  <script>
+    (function redirectToApp() {
+      var appBase = '/pikachu-duel';
+      var route = window.location.pathname.slice(appBase.length)
+        + window.location.search
+        + window.location.hash;
+      window.location.replace(appBase + '/?__route=' + encodeURIComponent(route));
+    }());
+  </script>
+</body>
+</html>
