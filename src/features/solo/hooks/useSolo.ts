@@ -207,14 +207,21 @@ export function useSolo(userId?: string | null, accountProfile?: Profile) {
       const portrait = isPortraitMode();
       const next = buildRound({ mode: nextMode, stage, difficulty, seed, portrait }) as Round;
 
+      // Consume earned bonus aids for this stage so aids don't snowball infinitely
+      const extraHints = bonusAids.hints;
+      const extraShuffles = bonusAids.shuffles;
+      if (extraHints > 0 || extraShuffles > 0) {
+        setBonusAids({ hints: 0, shuffles: 0 });
+      }
+
       const dealt = createSession({
         rows: next.rows,
         cols: next.cols,
         iconCount: next.iconCount,
         iconPool: next.iconPool,
         seed: next.seed,
-        hints: next.hints + bonusAids.hints,
-        shuffles: next.shuffles + bonusAids.shuffles,
+        hints: next.hints + extraHints,
+        shuffles: next.shuffles + extraShuffles,
         gravity: next.gravity,
         gold: next.gold,
         chrono: next.chrono,
@@ -310,9 +317,9 @@ export function useSolo(userId?: string | null, accountProfile?: Profile) {
         }
         if (timeLeft >= 30) {
           recoveredAids = true;
-          setBonusAids((b) => ({ hints: b.hints + 1, shuffles: b.shuffles + 1 }));
+          setBonusAids({ hints: 1, shuffles: 1 });
           setSession((s) => (s ? { ...s, hintsLeft: s.hintsLeft + 1, shufflesLeft: s.shufflesLeft + 1 } : s));
-          showToast('✨ SPEED MILESTONE! +1 Hint & Shuffle awarded!');
+          showToast('✨ SPEED MILESTONE! +1 Hint & Shuffle for next stage!');
         }
       } else if (!cleared) {
         setHeartsLeft(livesAfter);

@@ -79,7 +79,7 @@ The core engine is framework-agnostic, deterministic, and runnable natively in b
 ### 2.6 Adventure Ladder Progression (`stages.ts`)
 - Pure, deterministic calculation of stage parameters based on stage index $N$:
   - Dimensions scale across 8 standard board configurations from $6 \times 8$ up to $12 \times 16$.
-  - Allotted time per pair tightens smoothly from $6.5\text{s}$ down to $2.6\text{s}$.
+  - Allotted time per pair tightens smoothly from $3.6\text{s}$ down to $1.9\text{s}$ (capped at 180s per stage).
   - Sequential introduction of mechanics:
     - Stage 3: Gold tiles
     - Stage 4: Gravity dynamics

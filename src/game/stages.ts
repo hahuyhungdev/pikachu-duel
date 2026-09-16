@@ -24,29 +24,29 @@ export const INTRODUCES = {
 
 /** Canonical board grid shapes on the progression ladder. */
 const SHAPES: readonly { readonly rows: number; readonly cols: number }[] = [
-  { rows: 6, cols: 8 },   // Step 0: 24 pairs (48 cells) - Stages 1-4
-  { rows: 6, cols: 10 },  // Step 1: 30 pairs (60 cells) - Stages 5-10
-  { rows: 8, cols: 10 },  // Step 2: 40 pairs (80 cells) - Stages 11-18
-  { rows: 8, cols: 12 },  // Step 3: 48 pairs (96 cells) - Stages 19-30
-  { rows: 8, cols: 14 },  // Step 4: 56 pairs (112 cells) - Stages 31-50
-  { rows: 9, cols: 16 },  // Step 5: 72 pairs (144 cells) - Stages 51-75
-  { rows: 10, cols: 16 }, // Step 6: 80 pairs (160 cells) - Stages 76-90
-  { rows: 12, cols: 16 }, // Step 7: 96 pairs (192 cells) - Stages 91-100+
+  { rows: 6, cols: 8 },   // Step 0: 24 pairs (48 cells) - Stages 1-3
+  { rows: 6, cols: 10 },  // Step 1: 30 pairs (60 cells) - Stages 4-7
+  { rows: 8, cols: 10 },  // Step 2: 40 pairs (80 cells) - Stages 8-13
+  { rows: 8, cols: 12 },  // Step 3: 48 pairs (96 cells) - Stages 14-21
+  { rows: 8, cols: 14 },  // Step 4: 56 pairs (112 cells) - Stages 22-35
+  { rows: 9, cols: 16 },  // Step 5: 72 pairs (144 cells) - Stages 36-55
+  { rows: 10, cols: 16 }, // Step 6: 80 pairs (160 cells) - Stages 56-75
+  { rows: 12, cols: 16 }, // Step 7: 96 pairs (192 cells) - Stages 76-100+
 ] as const;
 
 /** Stage index thresholds where board dimensions expand. */
-const STAGE_SHAPE_THRESHOLDS: readonly number[] = [1, 5, 11, 19, 31, 51, 76, 91] as const;
+const STAGE_SHAPE_THRESHOLDS: readonly number[] = [1, 4, 8, 14, 22, 36, 56, 76] as const;
 
 /** Gravity variants in rotational order on the ladder. */
 const GRAVITY_ROTATION: readonly GravityMode[] = GRAVITY_MODES.filter(
   (mode): mode is Exclude<GravityMode, 'none'> => mode !== 'none'
 );
 
-/** Progression formula constants - balanced for crisp, engaging rounds up to stage 100 */
-const BASE_SECONDS_PER_PAIR = 5.2;
-const STAGE_SECONDS_DECREMENT = 0.024;
-const MIN_SECONDS_PER_PAIR = 2.8;
-const MAX_STAGE_CLOCK = 270; // 4.5 minutes maximum cap to prevent fatigue
+/** Progression formula constants - balanced for exciting, tight adventure gameplay up to stage 100 */
+const BASE_SECONDS_PER_PAIR = 3.6;
+const STAGE_SECONDS_DECREMENT = 0.022;
+const MIN_SECONDS_PER_PAIR = 1.9;
+const MAX_STAGE_CLOCK = 180; // 3.0 minutes maximum cap to prevent fatigue
 
 const SILVER_MULTIPLIER_PER_PAIR = 130;
 const GOLD_MULTIPLIER_PER_PAIR = 190;
@@ -55,8 +55,8 @@ const GOLD_BONUS_PER_STAGE = 40;
 const MIN_STAGE_ICONS = 16;
 const BASE_STAGE_ICONS = 18;
 
-const BASE_STAGE_BOMB_FUSE = 18;
-const MIN_STAGE_BOMB_FUSE = 8;
+const BASE_STAGE_BOMB_FUSE = 12;
+const MIN_STAGE_BOMB_FUSE = 5;
 
 /** Star scoring requirements for a stage. */
 export interface StageStarThresholds {
@@ -201,14 +201,14 @@ export function stageConfig(stage: number, { portrait = false }: StageConfigOpti
       ? 'none'
       : GRAVITY_ROTATION[Math.floor((n - INTRODUCES.gravity) / 2) % GRAVITY_ROTATION.length];
 
-  const gold = countFor(n, INTRODUCES.gold, 3, 6);
-  const chrono = countFor(n, INTRODUCES.chrono, 4, 4);
-  const ice = countFor(n, INTRODUCES.ice, 4, 6);
-  const bomb = countFor(n, INTRODUCES.bomb, 5, 3);
+  const gold = countFor(n, INTRODUCES.gold, 4, 5);
+  const chrono = countFor(n, INTRODUCES.chrono, 6, 3);
+  const ice = countFor(n, INTRODUCES.ice, 3, 8);
+  const bomb = countFor(n, INTRODUCES.bomb, 4, 5);
 
-  // Aids scale gracefully: starting with 3 aids, transitioning to 2 aids at stage 13 to maintain a fair safety margin
-  const hints = Math.max(2, 3 - Math.floor((n - FIRST_STAGE) / 12));
-  const shuffles = Math.max(2, 3 - Math.floor((n - FIRST_STAGE) / 12));
+  // Aids scale gracefully: 3 aids in early learning stages, transitioning to 2 aids at stage 14, and 1 aid at stage 27
+  const hints = Math.max(1, 3 - Math.floor((n - FIRST_STAGE) / 13));
+  const shuffles = Math.max(1, 3 - Math.floor((n - FIRST_STAGE) / 13));
 
   const silver = Math.round(pairs * SILVER_MULTIPLIER_PER_PAIR);
   const goldScore = Math.round(pairs * GOLD_MULTIPLIER_PER_PAIR + n * GOLD_BONUS_PER_STAGE);
@@ -235,7 +235,7 @@ export function stageConfig(stage: number, { portrait = false }: StageConfigOpti
     chrono,
     ice,
     bomb,
-    bombFuse: bomb > 0 ? Math.max(MIN_STAGE_BOMB_FUSE, BASE_STAGE_BOMB_FUSE - Math.floor(n / 6)) : 0,
+    bombFuse: bomb > 0 ? Math.max(MIN_STAGE_BOMB_FUSE, BASE_STAGE_BOMB_FUSE - Math.floor((n - INTRODUCES.bomb) / 4)) : 0,
     stars: { silver, gold: goldScore },
   };
 }
